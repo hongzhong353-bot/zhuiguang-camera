@@ -493,7 +493,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v3.6 原型 · LifeHack</div>
+    <div class="ver">v3.7 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -597,11 +597,11 @@
 
         <!-- 底部模式栏 -->
         <div class="mode-tabs" id="modeTabs">
+          <!-- v3.7：模式只分拍摄方式（预录/拍照/录像）；人像/风光不是拍摄方式，是风格，改到风格条里选——
+               选佳能人像再拍照就是人像摄影，选佳能人像再录像就是人像摄像，风光同理 -->
           <button data-mode="prerecord" class="on">预录</button>
           <button data-mode="photo">拍照</button>
           <button data-mode="video">录像</button>
-          <button data-mode="portrait">人像</button>
-          <button data-mode="landscape">风光</button>
         </div>
 
         <!-- 底部快门行 -->
@@ -1062,7 +1062,7 @@ let expectFinish = false;
 let recStartTime = 0, recTimerId = null, bufTimerId = null, bufStartTime = 0;
 let camMime = '';
 let camReady = false;
-let curMode = 'prerecord'; // prerecord | photo | video | portrait | landscape
+let curMode = 'prerecord'; // v3.7：prerecord | photo | video（人像/风光已并入风格条，不再是模式）
 // v3.2：桌面端（>=900px）默认前置摄像头，电脑基本没有后置摄像头；手机端保持后置
 const isDesktop = window.matchMedia('(min-width: 900px)').matches;
 let facing = isDesktop ? 'user' : 'environment';
@@ -1092,7 +1092,7 @@ let useProcessed = false;   // true = 录制处理过的流；false = 录原始�
 let procDegraded = false;   // 是否已降级（降级后不再尝试处理）
 let procSlowFrames = 0;
 
-const MODE_NAME = { prerecord: '预录', photo: '拍照', video: '录像', portrait: '人像', landscape: '风光' };
+const MODE_NAME = { prerecord: '预录', photo: '拍照', video: '录像' };
 
 let toastTimer = null;
 function showToast(msg){
@@ -1641,8 +1641,6 @@ function setMode(mode){
   if (mode === 'prerecord') showToast('预录模式：录制含前 ' + bufferSecs + ' 秒');
   else if (mode === 'photo') showToast('拍照模式：点快门保存照片');
   else if (mode === 'video') showToast('录像模式：不含预录制片段');
-  else if (mode === 'portrait'){ setCamStyle('canon'); showToast('人像模式：已切换到佳能人像风格'); }
-  else if (mode === 'landscape'){ setCamStyle('velvia'); showToast('风光模式：已切换到富士 Velvia 风格'); }
   updateBufferUI();
 }
 
@@ -1703,7 +1701,7 @@ function chunksSeconds(chunks){
 
 function updateBufferUI(){
   trimRing();
-  const show = camReady && (curMode === 'prerecord' || curMode === 'portrait' || curMode === 'landscape');
+  const show = camReady && curMode === 'prerecord'; // v3.7：只有预录模式有滚动缓存
   bufferBadge.classList.toggle('hidden', !show);
   // v3.5：徽标按计时显示（从开始缓存起计时，上限为所设预录秒数），不再直接显示数据块时间戳跨度——
   // Android 按关键帧间隔出块（约 3 秒一块），块跨度会在 23–31 秒之间来回跳，看着像坏了；计时显示稳步涨到设定值后保持
