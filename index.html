@@ -493,7 +493,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v3.9 原型 · LifeHack</div>
+    <div class="ver">v4.0 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -2323,6 +2323,55 @@ function applySCurve(v, strength){
 }
 function applyLift(v, lift){ return clamp255(v * (1 - lift / 255) + lift); }
 
+/* ---- v4.0：色相选择性调整（各家招牌色彩的差异主要在分色相上，不是全局饱和度——
+   比如 Velvia 只推蓝绿红三色、中性色基本不动；Classic Chrome 专门压蓝；佳能人像只动肤色带。
+   全局饱和度做不出这些，必须按色相分开调。以下辅助函数只做轻量计算，避免逐像素算完整 HSL。 ---- */
+function hueOf(r, g, b){
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d = max - min;
+  if (d < 12) return -1; // 近灰像素：无色相，不参与色相调整
+  let h;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h *= 60; if (h < 0) h += 360;
+  return h;
+}
+function hueBand(h, center, width){
+  if (h < 0) return 0;
+  let d = Math.abs(h - center); if (d > 180) d = 360 - d;
+  return d >= width ? 0 : 1 - d / width; // 三角窗：带中心权重 1，边缘平滑到 0
+}
+function selSatAt(p, h, center, width, amount){
+  // 只在指定色相带内调饱和度（p 为 [r,g,b]，h 为 hueOf 预算值，避免重复算色相）
+  const w = hueBand(h, center, width);
+  if (w <= 0) return p;
+  const l = 0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2];
+  const a = 1 + (amount - 1) * w;
+  return [clamp255(l + (p[0] - l) * a), clamp255(l + (p[1] - l) * a), clamp255(l + (p[2] - l) * a)];
+}
+function shiftBandAt(p, h, center, width, dR, dG, dB){
+  // 只在指定色相带内做通道增益微调（推色相用，如肤色往品红、蓝往青、绿往黄）
+  const w = hueBand(h, center, width);
+  if (w <= 0) return p;
+  return [clamp255(p[0] * (1 + dR * w)), clamp255(p[1] * (1 + dG * w)), clamp255(p[2] * (1 + dB * w))];
+}
+function splitTone(r, g, b, shR, shG, shB, hiR, hiG, hiB){
+  // 分调：暗部与亮部分别着色（如 Classic Chrome 的冷阴影+暖中间调、X100V 的青阴影+暖高光）
+  const l = 0.299 * r + 0.587 * g + 0.114 * b;
+  const shW = Math.max(0, (110 - l) / 110);
+  const hiW = Math.max(0, (l - 150) / 105);
+  return [clamp255(r + shR * shW + hiR * hiW), clamp255(g + shG * shW + hiG * hiW), clamp255(b + shB * shW + hiB * hiW)];
+}
+function desatHighlights(r, g, b, amount){
+  // 高光去饱和：越亮越褪色，模拟胶片式高光过渡（索尼 S-Cinetone 的招牌手法）
+  const l = 0.299 * r + 0.587 * g + 0.114 * b;
+  const w = Math.max(0, (l - 170) / 85);
+  if (w <= 0) return [r, g, b];
+  const a = 1 - amount * w;
+  return [clamp255(l + (r - l) * a), clamp255(l + (g - l) * a), clamp255(l + (b - l) * a)];
+}
+
 /* 每种风格 = 像素变换函数 fn（精确变换，拍照与上传工具用）+ live（GPU 滤镜近似，
    实时视频用，与 fn 共用同一套风格参数、仅渲染器不同）。均为模拟近似，非厂商官方色彩科学。 */
 const STYLES = [
@@ -2330,65 +2379,108 @@ const STYLES = [
     live: 'none',
     fn: (r, g, b) => [r, g, b] },
   { id: 'cc', name: '富士 Classic Chrome', en: 'FUJIFILM', body: '#3a3a3a', top: '#c8c4b8', accent: '#b7791f',
-    live: 'saturate(0.78) contrast(1.05) sepia(0.10) brightness(1.03)',
+    // v4.0：纪实杂志风——低饱和（蓝压得最狠，红也压）、阴影硬对比、暖中间调+冷阴影、颗粒
+    live: 'saturate(0.72) contrast(1.08) sepia(0.08) brightness(1.02)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 0.78);
-      p = [applySCurve(p[0], 0.25), applySCurve(p[1], 0.25), applySCurve(p[2], 0.25)];
-      p = [clamp255(p[0] * 1.03), p[1], clamp255(p[2] * 0.96)];
-      p = [applyLift(p[0], 8), applyLift(p[1], 8), applyLift(p[2], 8)];
+      let p = applySat(r, g, b, 0.72);
+      p = [applySCurve(p[0], 0.30), applySCurve(p[1], 0.30), applySCurve(p[2], 0.30)];
+      const h = hueOf(p[0], p[1], p[2]);
+      p = selSatAt(p, h, 235, 50, 0.70); // 蓝再压三成：Classic Chrome 最标志的就是闷蓝
+      p = selSatAt(p, h, 8, 35, 0.80);   // 红压两成，变砖红
+      p = splitTone(p[0], p[1], p[2], -6, 2, 10, 6, 1, -4); // 冷阴影 + 暖高光
       const n = (Math.random() - 0.5) * 7;
       return [clamp255(p[0] + n), clamp255(p[1] + n), clamp255(p[2] + n)];
     } },
   { id: 'velvia', name: '富士 Velvia', en: 'FUJIFILM', body: '#2e2e2e', top: '#c8c4b8', accent: '#2f7d4f',
-    live: 'saturate(1.38) contrast(1.08)',
+    // v4.0：全场最高饱和——分色相推（蓝绿红猛推，中性色不动）、绿通道中间调再加对比、蓝天微品红、阴影压实
+    live: 'saturate(1.48) contrast(1.12) hue-rotate(4deg)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 1.38);
-      p = applyContrast(p[0], p[1], p[2], 1.08);
-      return [p[0], clamp255(p[1] * 1.04), clamp255(p[2] * 1.05)];
+      let p = applySat(r, g, b, 1.46);
+      p = [applySCurve(p[0], 0.15), applySCurve(p[1], 0.15), applySCurve(p[2], 0.15)];
+      p[1] = applySCurve(p[1], 0.15); // 绿通道中间调再加一道对比：Velvia 招牌的电光绿
+      const h = hueOf(p[0], p[1], p[2]);
+      p = selSatAt(p, h, 120, 50, 1.22); // 绿再推
+      p = selSatAt(p, h, 235, 45, 1.18); // 蓝再推
+      p = selSatAt(p, h, 8, 35, 1.10);   // 红再推
+      p = shiftBandAt(p, h, 235, 45, 0.06, 0, 0); // 蓝天往品红偏一点
+      return p;
     } },
   { id: 'canon', name: '佳能人像', en: 'Canon', body: '#1c1c1c', top: '#1c1c1c', accent: '#c8102e',
-    live: 'saturate(1.12) contrast(0.96) sepia(0.08)',
+    // v4.0（重点）：肤色往暖粉推（橙红带朝品红移、红黄饱和+12%）、对比放软、高光柔和过渡、黑场微抬、肤色提亮
+    live: 'saturate(1.06) contrast(0.95) sepia(0.08) brightness(1.03) hue-rotate(-3deg)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 1.12);
-      p = applyContrast(p[0], p[1], p[2], 0.96);
-      return [clamp255(p[0] * 1.05), p[1], clamp255(p[2] * 0.94)];
+      let p = applySat(r, g, b, 1.04); // 人像档比标准档饱和略低
+      p = applyContrast(p[0], p[1], p[2], 0.94);
+      p = [applySCurve(p[0], -0.12), applySCurve(p[1], -0.12), applySCurve(p[2], -0.12)]; // 反 S：暗部提亮+高光柔化
+      p = [applyLift(p[0], 8), applyLift(p[1], 8), applyLift(p[2], 8)]; // 黑场微抬（褪黑）
+      const h = hueOf(p[0], p[1], p[2]);
+      p = shiftBandAt(p, h, 28, 35, 0, -0.08, 0.10); // 肤色带往品红推：去蜡黄、显气色
+      p = selSatAt(p, h, 28, 40, 1.12); // 肤色带饱和 +12%
+      return [clamp255(p[0] * 1.03), p[1], clamp255(p[2] * 0.97)]; // 整体微暖
     } },
   { id: 'nikon', name: '尼康鲜艳', en: 'Nikon', body: '#1c1c1c', top: '#1c1c1c', accent: '#f5c518',
-    live: 'saturate(1.28) contrast(1.10)',
+    // v4.0：高饱和+高对比、绿蓝格外强、冷色保持冷（不加暖）、红黄再推、阴影压实
+    live: 'saturate(1.32) contrast(1.14)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 1.28);
-      p = applyContrast(p[0], p[1], p[2], 1.10);
-      return [p[0], p[1], clamp255(p[2] * 1.04)];
+      let p = applySat(r, g, b, 1.32);
+      p = applyContrast(p[0], p[1], p[2], 1.12);
+      p = [applySCurve(p[0], 0.18), applySCurve(p[1], 0.18), applySCurve(p[2], 0.18)];
+      const h = hueOf(p[0], p[1], p[2]);
+      p = selSatAt(p, h, 120, 50, 1.15); // 绿再推
+      p = selSatAt(p, h, 235, 45, 1.15); // 蓝再推
+      p = selSatAt(p, h, 8, 35, 1.12);   // 红再推
+      return [clamp255(p[0] * 1.01), p[1], clamp255(p[2] * 1.02)]; // 冷色保持冷，不加暖
     } },
   { id: 'sony', name: '索尼胶片', en: 'SONY', body: '#242424', top: '#242424', accent: '#e67e22',
-    live: 'saturate(0.88) contrast(0.97) brightness(1.04) sepia(0.04)',
+    // v4.0（S-Cinetone 方向）：中性偏冷打底、黄绿压饱和、红往橙推、高光去饱和+柔和过渡
+    live: 'saturate(1.05) contrast(1.02) brightness(1.02) sepia(0.05)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 0.88);
-      p = applyContrast(p[0], p[1], p[2], 0.97);
-      p = [applyLift(p[0], 12), applyLift(p[1], 12), applyLift(p[2], 12)];
-      return [clamp255(p[0] * 1.03), p[1], p[2]];
+      let p = applySat(r, g, b, 1.05);
+      p = applyContrast(p[0], p[1], p[2], 1.02);
+      p = [applySCurve(p[0], -0.08), applySCurve(p[1], -0.08), applySCurve(p[2], -0.08)]; // 高光柔化
+      p = [applyLift(p[0], 6), applyLift(p[1], 6), applyLift(p[2], 6)];
+      const h = hueOf(p[0], p[1], p[2]);
+      p = selSatAt(p, h, 55, 30, 0.82);  // 黄压饱和
+      p = selSatAt(p, h, 120, 45, 0.85); // 绿压饱和
+      p = shiftBandAt(p, h, 8, 30, 0, 0.08, -0.04); // 红往橙推
+      p = desatHighlights(p[0], p[1], p[2], 0.35); // 高光去饱和
+      return [clamp255(p[0] * 1.01), p[1], clamp255(p[2] * 1.01)]; // 保持中性，几乎不偏色
     } },
   { id: 'hassel', name: '哈苏自然', en: 'Hasselblad', body: '#2b2b2b', top: '#2b2b2b', accent: '#e8622c',
-    live: 'saturate(1.02) contrast(1.03)',
+    // v4.0（HNCS 方向）：最忠实的一档——几乎不改色，只给一点点通透感与平滑的色调过渡
+    live: 'saturate(1.03) contrast(1.02)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 1.02);
-      p = applyContrast(p[0], p[1], p[2], 1.03);
+      let p = applySat(r, g, b, 1.03);
+      p = applyContrast(p[0], p[1], p[2], 1.02);
+      p = [applySCurve(p[0], 0.05), applySCurve(p[1], 0.05), applySCurve(p[2], 0.05)]; // 极轻的胶片曲线
       return p;
     } },
   { id: 'g7x3', name: 'G7X3', en: 'Canon G7X III', body: '#1c1c1c', top: '#3a3a3a', accent: '#c8102e',
-    live: 'saturate(1.18) contrast(1.06) sepia(0.06)',
+    // v4.0：佳能暖调 + 比人像档更活泼——饱和对比都略高、肤色暖粉（比佳能人像轻）、整体偏暖
+    live: 'saturate(1.18) contrast(1.06) sepia(0.07) brightness(1.01)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 1.18);
+      let p = applySat(r, g, b, 1.16);
       p = applyContrast(p[0], p[1], p[2], 1.06);
-      return [clamp255(p[0] * 1.04), p[1], clamp255(p[2] * 0.96)];
+      p = [applySCurve(p[0], 0.08), applySCurve(p[1], 0.08), applySCurve(p[2], 0.08)];
+      p = [applyLift(p[0], 4), applyLift(p[1], 4), applyLift(p[2], 4)];
+      const h = hueOf(p[0], p[1], p[2]);
+      p = shiftBandAt(p, h, 28, 35, 0, -0.05, 0.06); // 肤色微粉（比佳能人像轻）
+      p = selSatAt(p, h, 28, 40, 1.08); // 肤色带饱和 +8%
+      return [clamp255(p[0] * 1.04), p[1], clamp255(p[2] * 0.96)]; // 整体偏暖
     } },
   { id: 'x100v', name: 'X100V', en: 'FUJIFILM X100V', body: '#3a3a3a', top: '#d8d2c2', accent: '#b7791f',
-    live: 'saturate(1.05) contrast(1.04) brightness(1.02) sepia(0.05)',
+    // v4.0（Classic Negative 方向，X100V 最出名的那个味）：色彩拉开——绿偏黄、蓝偏青、肤色暖、
+    // 阴影带青、高光带暖品红；对比硬、颗粒是标配
+    live: 'saturate(0.95) contrast(1.08) sepia(0.05) hue-rotate(-6deg) brightness(1.01)',
     fn: (r, g, b) => {
-      let p = applySat(r, g, b, 1.05);
-      p = [applySCurve(p[0], 0.2), applySCurve(p[1], 0.2), applySCurve(p[2], 0.2)];
-      p = [clamp255(p[0] * 1.04), p[1], clamp255(p[2] * 0.97)];
-      p = [applyLift(p[0], 5), applyLift(p[1], 5), applyLift(p[2], 5)];
+      let p = applySat(r, g, b, 0.95);
+      p = applyContrast(p[0], p[1], p[2], 1.08);
+      p = [applySCurve(p[0], 0.20), applySCurve(p[1], 0.20), applySCurve(p[2], 0.20)];
+      p = splitTone(p[0], p[1], p[2], -8, 6, 10, 8, 0, 3); // 青阴影 + 暖品红高光
+      const h = hueOf(p[0], p[1], p[2]);
+      p = shiftBandAt(p, h, 120, 45, 0.08, 0, -0.06); // 绿往黄偏
+      p = shiftBandAt(p, h, 235, 40, -0.04, 0.08, 0); // 蓝往青偏
+      p = shiftBandAt(p, h, 28, 35, 0.03, -0.02, 0);  // 肤色暖一点
       const n = (Math.random() - 0.5) * 9;
       return [clamp255(p[0] + n), clamp255(p[1] + n), clamp255(p[2] + n)];
     } }
