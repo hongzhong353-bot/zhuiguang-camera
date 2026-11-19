@@ -133,7 +133,7 @@
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   /* v3.3：占位内容锚定到底部、紧贴模式栏，上方黑区变“待启动取景器”，四角加淡淡的取景框角标 */
-  .vf-empty{position:absolute;inset:0 0 calc(180px + env(safe-area-inset-bottom)) 0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:12px;color:#ddd;text-align:center;padding:24px 24px 28px;background:#111}
+  .vf-empty{position:absolute;inset:0 0 calc(148px + env(safe-area-inset-bottom)) 0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:12px;color:#ddd;text-align:center;padding:24px 24px 28px;background:#111}
   .vf-empty .big{font-size:2.2rem}
   .vf-corners{position:absolute;left:9%;right:9%;top:13%;bottom:236px;pointer-events:none}
   .vf-corners .vc{position:absolute;width:30px;height:30px;border:2px solid rgba(255,255,255,.35)}
@@ -144,7 +144,7 @@
   /* v3.3：弧形变焦拨盘（替代点击式胶囊）：SVG 弧线 + 可拖动滑块，对数映射，刻度 15/24/50/85/135/250 */
   .focal-dial{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(246px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(214px + env(safe-area-inset-bottom));z-index:5;
     width:min(320px,88vw);text-align:center;
   }
   .focal-dial .fd-readout{
@@ -154,7 +154,7 @@
   .focal-dial svg{display:block;width:100%;height:auto;touch-action:none;cursor:pointer}
   .focal-note{
     position:absolute;left:0;right:0;text-align:center;
-    bottom:calc(362px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(330px + env(safe-area-inset-bottom));z-index:5;
     font-size:.68rem;color:rgba(255,255,255,.65);text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;
   }
   /* v3.3：帧率选择菜单（顶栏帧率 chip 下拉） */
@@ -175,19 +175,19 @@
   }
   /* 底部模式栏 */
   .mode-tabs{
-    position:absolute;left:0;right:0;bottom:calc(104px + env(safe-area-inset-bottom));z-index:5;
+    position:absolute;left:0;right:0;bottom:calc(86px + env(safe-area-inset-bottom));z-index:5;
     display:flex;justify-content:center;gap:4px;
     background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,0));
-    padding:26px 8px 6px;
+    padding:18px 8px 4px;
   }
   .mode-tabs button{
     border:none;background:transparent;color:rgba(255,255,255,.8);cursor:pointer;
-    font-size:1rem;padding:8px 13px;white-space:nowrap;
+    font-size:.92rem;padding:6px 11px;white-space:nowrap;
   }
   .mode-tabs button.on{color:#f5c518;font-weight:700}
   /* 取景器风格条（vivo 色彩风格式：横向卡片，位于模式栏上方、快门上方） */
   .style-strip{
-    position:absolute;left:0;right:0;bottom:calc(176px + env(safe-area-inset-bottom));z-index:5;
+    position:absolute;left:0;right:0;bottom:calc(144px + env(safe-area-inset-bottom));z-index:5;
     display:flex;gap:8px;overflow-x:auto;padding:6px 12px 4px;
     -webkit-overflow-scrolling:touch;scrollbar-width:none;
     background:linear-gradient(0deg,rgba(0,0,0,.55),rgba(0,0,0,0));
@@ -231,29 +231,29 @@
   .cam-bottom{
     position:absolute;left:0;right:0;bottom:0;z-index:5;
     display:flex;align-items:center;justify-content:space-between;
-    padding:10px 26px calc(26px + env(safe-area-inset-bottom));
+    padding:8px 26px calc(14px + env(safe-area-inset-bottom));
     background:rgba(0,0,0,.72);
   }
   .thumb{
-    width:52px;height:52px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.12);
+    width:44px;height:44px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.12);
     border:1.5px solid rgba(255,255,255,.5);cursor:pointer;flex:0 0 auto;
     display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);font-size:.62rem;
   }
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
   .shutter{
-    width:76px;height:76px;border-radius:50%;border:4px solid #fff;cursor:pointer;flex:0 0 auto;
+    width:64px;height:64px;border-radius:50%;border:3px solid #fff;cursor:pointer;flex:0 0 auto;
     background:radial-gradient(circle at 35% 30%,#f2666b,var(--red) 60%,var(--red-dark));
     box-shadow:0 4px 18px rgba(0,0,0,.5);
     display:flex;align-items:center;justify-content:center;transition:transform .12s ease;
   }
   .shutter:active{transform:scale(.93)}
-  .shutter .sh-icon{width:30px;height:30px;border-radius:50%;background:#fff}
+  .shutter .sh-icon{width:26px;height:26px;border-radius:50%;background:#fff}
   .shutter.recording{animation:pulse 1.2s infinite}
-  .shutter.recording .sh-icon{width:26px;height:26px;border-radius:6px;background:#fff}
+  .shutter.recording .sh-icon{width:22px;height:22px;border-radius:5px;background:#fff}
   .shutter.photo-mode{background:radial-gradient(circle at 35% 30%,#fff,#eee 70%,#ddd)}
   .shutter.photo-mode .sh-icon{background:transparent}
-  .flip-btn{width:52px;height:52px;flex:0 0 auto}
-  .flip-btn svg{width:26px;height:26px}
+  .flip-btn{width:44px;height:44px;flex:0 0 auto}
+  .flip-btn svg{width:22px;height:22px}
   /* 更多面板（底部弹出） */
   .more-sheet{
     position:absolute;left:0;right:0;bottom:0;z-index:12;
@@ -493,7 +493,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v3.7 原型 · LifeHack</div>
+    <div class="ver">v3.8 原型 · LifeHack</div>
   </header>
 
   <main>
