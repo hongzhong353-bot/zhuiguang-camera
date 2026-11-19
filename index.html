@@ -280,6 +280,13 @@
     display:block;margin:14px auto 0;border:none;background:rgba(255,255,255,.12);color:#fff;
     font-size:.85rem;padding:8px 28px;border-radius:999px;cursor:pointer;
   }
+  /* v4.1：美颜面板滑杆行（复用 more-sheet 的面板样式） */
+  .beauty-row{display:flex;align-items:center;gap:10px;margin:12px 4px;color:#fff}
+  .beauty-row label{flex:0 0 44px;font-size:.85rem;font-weight:600}
+  .beauty-row input[type=range]{flex:1;accent-color:#f5c518;cursor:pointer}
+  .beauty-row .bv{flex:0 0 30px;text-align:right;font-size:.85rem;color:#f5c518;font-variant-numeric:tabular-nums}
+  .beauty-note{font-size:.72rem;color:rgba(255,255,255,.6);line-height:1.7;text-align:center;margin-top:10px}
+  .beauty-note b{color:rgba(255,255,255,.85)}
   /* 拍摄结果面板（底部弹出） */
   .result-sheet{
     position:absolute;left:0;right:0;bottom:0;z-index:12;max-height:78%;
@@ -489,11 +496,20 @@
 </style>
 </head>
 <body>
+<!-- v4.1：美颜锐化核（SVG feConvolveMatrix，经 CSS filter: url(#beautySharp) 作用于取景画面；
+     0×0 占位但不 display:none——隐藏后部分浏览器取不到滤镜。核矩阵由 JS 按锐化滑杆实时更新。 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="beautySharp" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feConvolveMatrix id="sharpKernel" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" preserveAlpha="true"/>
+    </filter>
+  </defs>
+</svg>
 <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v4.0 原型 · LifeHack</div>
+    <div class="ver">v4.1 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -636,6 +652,10 @@
               <svg viewBox="0 0 24 24"><path d="M3 17h18M5 17v-3M12 17v-5M19 17v-3"/><circle cx="12" cy="8" r="2.5"/></svg>
               <div class="nm">测距</div><div class="ds">对焦距离 · 估算</div>
             </div>
+            <div class="ms-item" data-action="beauty">
+              <svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M19 15l.9 2.6L22.5 18.5l-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9L19 15z"/></svg>
+              <div class="nm">美颜</div><div class="ds">锐化 · 磨皮 · 提亮</div>
+            </div>
             <div class="ms-item" data-action="fullscreen" id="fsItem">
               <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
               <div class="nm">全屏</div><div class="ds">隐藏浏览器栏</div>
@@ -643,6 +663,17 @@
           </div>
           <p style="text-align:center;font-size:.72rem;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6">取景器选的风格会一同保存到照片和视频里；<br>部分设备录像无法实时带风格时，会保存原画并提示。风格为模拟近似，非厂商官方色彩科学。</p>
           <button class="ms-close" id="btnMoreClose">关闭</button>
+        </div>
+
+        <!-- v4.1：美颜面板（复用 more-sheet 样式；滑杆值存 localStorage，调到 0 即关闭该项） -->
+        <div class="more-sheet hidden" id="beautyPanel">
+          <div class="ms-title">美颜</div>
+          <div class="beauty-row"><label for="beautySharp">锐化</label><input type="range" id="beautySharp" min="0" max="100" value="40"><span class="bv" id="beautySharpVal">40</span></div>
+          <div class="beauty-row"><label for="beautySmooth">磨皮</label><input type="range" id="beautySmooth" min="0" max="100" value="30"><span class="bv" id="beautySmoothVal">30</span></div>
+          <div class="beauty-row"><label for="beautyBright">提亮</label><input type="range" id="beautyBright" min="0" max="100" value="0"><span class="bv" id="beautyBrightVal">0</span></div>
+          <p class="beauty-note" id="beautyRes">实际分辨率：—（打开相机后显示）</p>
+          <p class="beauty-note">肤色往佳能人像的红里透白方向调（模拟近似，非佳能官方效果）。美颜改善观感，补不回丢失的细节。<br>照片：肤软细节硬（磨皮只动肤色、锐化保住眼睛眉毛头发）；实时预览锐化效果最佳，录制视频锐化较弱；磨皮仅作用于照片，实时视频做肤色磨皮成本太高，全图柔焦会更糊所以不做。</p>
+          <button class="ms-close" id="btnBeautyClose">关闭</button>
         </div>
 
         <!-- 拍摄结果面板 -->
@@ -1257,6 +1288,7 @@ async function startCamera(){
   });
   startProcessing();
   startBuffering();
+  updateBeautyRes(); // v4.1：相机打开后显示实际分辨率
   // v3.3：防抖开关上次是开着的，相机打开后自动接回陀螺仪（Android 无需手势；iOS 需手势授权，失败时由 attachStab 提示并弹回）
   if (stabOn && !stabListening) attachStab(true);
 }
@@ -1548,6 +1580,201 @@ function updateStabUI(){
   btnStab.classList.toggle('on', stabOn);
 }
 
+/* ---- v4.1：美颜（往佳能人像的红里透白方向调，模拟近似，非佳能官方效果） ----
+   方向：糊变“柔和的肤感”而不是“模糊”——肤软、细节硬。
+   磨皮只动肤色带（肤色往暖粉推、去蜡黄、提亮肤色，与 v4.0 佳能人像风格的肤色调法一致）；
+   锐化保住眼睛、眉毛、头发这些细节，皮肤几乎不锐化；
+   提亮向白提（暗部多提、高光不动），透而不死白。
+   三路能力不同，文案如实区分：
+   - 实时预览：SVG 锐化核经 CSS filter 作用于取景画面（GPU 即时），效果最佳；提亮经 ctx.filter。
+   - 录制：ctx.filter 只能做轻微对比提升 + 提亮，锐化较弱（CSS filter 不进画布位图）。
+   - 照片：一次性逐像素处理，完整效果（肤色掩膜磨皮 + 暖粉肤色 + 透亮提亮 + 掩膜锐化）。
+   实时视频磨皮做不了：逐像素肤色掩膜每帧跑不动（getImageData 每帧就是几十毫秒），
+   半分辨率处理会拖垮帧率还把细节一起变软，全图柔焦会更糊，所以只做照片。 */
+const beauty = { sharp: 40, smooth: 30, bright: 0 };
+try {
+  const s = parseInt(localStorage.getItem('zg-beauty-sharp'), 10);
+  if (!isNaN(s)) beauty.sharp = Math.min(100, Math.max(0, s));
+  const m = parseInt(localStorage.getItem('zg-beauty-smooth'), 10);
+  if (!isNaN(m)) beauty.smooth = Math.min(100, Math.max(0, m));
+  const b = parseInt(localStorage.getItem('zg-beauty-bright'), 10);
+  if (!isNaN(b)) beauty.bright = Math.min(100, Math.max(0, b));
+} catch (e) {}
+const beautyPanel = document.getElementById('beautyPanel');
+const btnBeautyClose = document.getElementById('btnBeautyClose');
+const beautySharp = document.getElementById('beautySharp');
+const beautySmooth = document.getElementById('beautySmooth');
+const beautyBright = document.getElementById('beautyBright');
+const beautySharpVal = document.getElementById('beautySharpVal');
+const beautySmoothVal = document.getElementById('beautySmoothVal');
+const beautyBrightVal = document.getElementById('beautyBrightVal');
+const beautyRes = document.getElementById('beautyRes');
+const sharpKernel = document.getElementById('sharpKernel');
+
+function updateBeautyPreview(){
+  // 预览锐化：更新 SVG 锐化核（中心 1+4a、邻域 -a，核和恒为 1），经 CSS filter 作用于
+  // 取景画布（处理模式）与原始视频（降级模式），哪个可见就作用于哪个；
+  // CSS filter 不进 captureStream 位图，所以录像不受预览锐化影响。
+  // 力度宁弱勿过：核强度上限 0.6（中心最高 3.4），默认 40 时中心约 2.0，自然不生白边
+  const a = beauty.sharp / 100 * 0.6;
+  if (sharpKernel){
+    const na = (-a).toFixed(3), c = (1 + 4 * a).toFixed(3);
+    sharpKernel.setAttribute('kernelMatrix', '0 ' + na + ' 0 ' + na + ' ' + c + ' ' + na + ' 0 ' + na + ' 0');
+  }
+  const parts = [];
+  if (beauty.sharp > 0) parts.push('url(#beautySharp)');
+  // 降级为原始流时没有绘制循环，提亮改走 CSS；处理模式下提亮走 ctx.filter，避免重复叠加
+  // 提亮上限 1.20（宁弱勿过：再高高光会死白）
+  if (!useProcessed && beauty.bright > 0) parts.push('brightness(' + (1 + beauty.bright / 100 * 0.20).toFixed(3) + ')');
+  const f = parts.join(' ') || 'none';
+  viewCanvas.style.filter = f;
+  camVideo.style.filter = f;
+}
+
+function liveBeautyFilter(){
+  // 录制路径的轻量美颜（进画布位图，从而进录制）：锐化在 ctx.filter 里没有真锐化核
+  // 的等价物，只能做轻微对比提升；提亮用 brightness；磨皮实时做不了，不做。
+  const parts = [];
+  if (beauty.sharp > 0) parts.push('contrast(' + (1 + beauty.sharp / 100 * 0.10).toFixed(3) + ')');
+  if (beauty.bright > 0) parts.push('brightness(' + (1 + beauty.bright / 100 * 0.20).toFixed(3) + ')');
+  return parts.join(' ');
+}
+
+function updateBeautyRes(){
+  // 实际分辨率如实显示：取视频轨的真实尺寸；低于请求的 1920×1080 时说明已是最高
+  if (!camReady || !camVideo.videoWidth){
+    beautyRes.textContent = '实际分辨率：—（打开相机后显示）';
+    return;
+  }
+  const w = camVideo.videoWidth, h = camVideo.videoHeight;
+  const below = w < 1920 || h < 1080;
+  beautyRes.textContent = '实际分辨率：' + w + '×' + h
+    + (below ? '（已是该摄像头能给到的最高分辨率，请求的是 1920×1080）' : '');
+}
+
+function openBeautyPanel(){
+  updateBeautyRes();
+  beautyPanel.classList.remove('hidden');
+}
+btnBeautyClose.addEventListener('click', () => beautyPanel.classList.add('hidden'));
+
+function bindBeautySlider(input, valEl, key, storageKey){
+  input.value = beauty[key];
+  valEl.textContent = beauty[key];
+  input.addEventListener('input', () => {
+    const v = parseInt(input.value, 10) || 0;
+    beauty[key] = v;
+    valEl.textContent = v;
+    try { localStorage.setItem(storageKey, String(v)); } catch (e) {}
+    updateBeautyPreview(); // 预览即时跟手；绘制循环每帧读 beauty 状态，录制侧无需额外调用
+  });
+}
+bindBeautySlider(beautySharp, beautySharpVal, 'sharp', 'zg-beauty-sharp');
+bindBeautySlider(beautySmooth, beautySmoothVal, 'smooth', 'zg-beauty-smooth');
+bindBeautySlider(beautyBright, beautyBrightVal, 'bright', 'zg-beauty-bright');
+updateBeautyPreview(); // 打开页面即按保存的值生效
+
+function boxBlurSeparable(src, w, h, radius){
+  // 可分离均值模糊（滑动窗口，O(w*h*radius*2)）：先横向后纵向；返回新的 Uint8ClampedArray。
+  // 边缘像素钳制复用（窗口恒为 2r+1 项，除数不变）。只模糊 RGB，alpha 原样。
+  const tmp = new Float32Array(w * h * 3);
+  const out = new Uint8ClampedArray(w * h * 4);
+  const d = 2 * radius + 1;
+  for (let y = 0; y < h; y++){
+    let sr = 0, sg = 0, sb = 0;
+    for (let x = -radius; x <= radius; x++){
+      const cx = Math.min(w - 1, Math.max(0, x));
+      const i = (y * w + cx) * 4;
+      sr += src[i]; sg += src[i + 1]; sb += src[i + 2];
+    }
+    for (let x = 0; x < w; x++){
+      const o = (y * w + x) * 3;
+      tmp[o] = sr / d; tmp[o + 1] = sg / d; tmp[o + 2] = sb / d;
+      const xAdd = Math.min(w - 1, x + radius + 1), xSub = Math.max(0, x - radius);
+      const ia = (y * w + xAdd) * 4, is = (y * w + xSub) * 4;
+      sr += src[ia] - src[is]; sg += src[ia + 1] - src[is + 1]; sb += src[ia + 2] - src[is + 2];
+    }
+  }
+  for (let x = 0; x < w; x++){
+    let sr = 0, sg = 0, sb = 0;
+    for (let y = -radius; y <= radius; y++){
+      const cy = Math.min(h - 1, Math.max(0, y));
+      const o = (cy * w + x) * 3;
+      sr += tmp[o]; sg += tmp[o + 1]; sb += tmp[o + 2];
+    }
+    for (let y = 0; y < h; y++){
+      const o = (y * w + x) * 3, oi = (y * w + x) * 4;
+      out[oi] = sr / d; out[oi + 1] = sg / d; out[oi + 2] = sb / d; out[oi + 3] = src[oi + 3];
+      const yAdd = Math.min(h - 1, y + radius + 1), ySub = Math.max(0, y - radius);
+      const ia = (yAdd * w + x) * 3, is = (ySub * w + x) * 3;
+      sr += tmp[ia] - tmp[is]; sg += tmp[ia + 1] - tmp[is + 1]; sb += tmp[ia + 2] - tmp[is + 2];
+    }
+  }
+  return out;
+}
+
+function skinWeight(r, g, b){
+  // 肤色权重 0..1：色相在肤色带（中心 28°，与 v4.0 佳能人像同一色相带）+ R>G≥B +
+  // 中等亮度与饱和度；灰、太暗、太亮、太艳都不是肤色。复用 v4.0 的 hueOf/hueBand。
+  const h = hueOf(r, g, b);
+  if (h < 0) return 0;
+  const w = hueBand(h, 28, 35);
+  if (w <= 0) return 0;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  const l = 0.299 * r + 0.587 * g + 0.114 * b;
+  if (l < 40 || l > 235) return 0;
+  const sat = mx === 0 ? 0 : (mx - mn) / mx;
+  if (sat < 0.12 || sat > 0.75) return 0;
+  if (!(r > g && g >= b)) return 0;
+  return w;
+}
+
+function applyBeautyToPhoto(ctx, w, h){
+  // 照片美颜（一次性逐像素处理）：肤软、细节硬。
+  // 顺序：肤色带平滑 + 暖粉肤色（佳能人像方向）→ 掩膜锐化（肤色几乎不锐化，细节全锐化）→ 透亮提亮。
+  const sharp = beauty.sharp, smooth = beauty.smooth, bright = beauty.bright;
+  if (sharp <= 0 && smooth <= 0 && bright <= 0) return;
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  const blurSharp = sharp > 0 ? boxBlurSeparable(d, w, h, 1) : null;
+  const blurSkin = smooth > 0 ? boxBlurSeparable(d, w, h, 2) : null;
+  const sK = smooth / 100;      // 磨皮强度 0..1
+  const uK = sharp / 100 * 0.6; // 锐化强度 0..0.6（宁弱勿过：半径 1 的非锐化掩模，0.6 已够硬，再高易出白边）
+  const liftT = bright / 100 * 0.15; // 提亮：向白提亮系数 0..0.15（暗部多提、高光不动，永不裁切高光）
+  for (let i = 0; i < d.length; i += 4){
+    let r = d[i], g = d[i + 1], b = d[i + 2];
+    const skinW = (smooth > 0 || sharp > 0) ? skinWeight(r, g, b) : 0;
+    if (smooth > 0 && skinW > 0){
+      // 磨皮：只平滑肤色带；混合上限 0.55——保留 45% 原始质感，绝不磨成塑料皮；
+      // 同时肤色往暖粉推（佳能人像方向：去蜡黄、显气色），
+      // 调法与 v4.0 佳能人像风格一致（G 降、B 升 = 往品红；肤色带饱和 +12%；肤色微亮）
+      const m = skinW * sK * 0.55;
+      r += (blurSkin[i] - r) * m;
+      g += (blurSkin[i + 1] - g) * m;
+      b += (blurSkin[i + 2] - b) * m;
+      g *= 1 - 0.08 * skinW * sK;
+      b *= 1 + 0.10 * skinW * sK;
+      const l = 0.299 * r + 0.587 * g + 0.114 * b;
+      const sa = 1 + 0.12 * skinW * sK;
+      r = l + (r - l) * sa; g = l + (g - l) * sa; b = l + (b - l) * sa;
+      r *= 1 + 0.03 * skinW * sK; g *= 1 + 0.03 * skinW * sK; b *= 1 + 0.03 * skinW * sK;
+    }
+    if (sharp > 0){
+      // 掩膜锐化（非锐化掩模）：肤色几乎不锐化（留 10%），细节全锐化——肤软、细节硬
+      const a = uK * (1 - skinW * 0.9);
+      r += (r - blurSharp[i]) * a;
+      g += (g - blurSharp[i + 1]) * a;
+      b += (b - blurSharp[i + 2]) * a;
+    }
+    if (bright > 0){
+      // 透亮提亮：向白提亮，暗部多提、高光不动，不死白
+      r += (255 - r) * liftT; g += (255 - g) * liftT; b += (255 - b) * liftT;
+    }
+    d[i] = clamp255(r); d[i + 1] = clamp255(g); d[i + 2] = clamp255(b);
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
 /* ---- 实时风格处理：视频 → 取景画布（应用风格滤镜）→ captureStream 供录制 ----
    取舍说明：逐像素 JS 变换在 1080p/30fps 下手机 CPU 扛不住（约每秒 6000 万像素操作，
    且 getImageData/putImageData 还有大量内存拷贝），因此实时路径用 GPU 加速的
@@ -1585,6 +1812,7 @@ function startProcessing(){
     useProcessed = true;
     procSlowFrames = 0;
     camScreen.classList.add('proc-on');
+    updateBeautyPreview(); // v4.1：处理路径恢复，提亮改走 ctx.filter，CSS 提亮撤下
     updateFocalNote(); // 处理模式下数码变焦会进入录像，提示文案相应变化
     updateStabUI(); // 处理路径恢复，防抖 chip 状态同步
     const loop = () => {
@@ -1612,7 +1840,9 @@ function drawProcessedFrame(){
   const sx = rect.sx, sy = rect.sy, sw = rect.sw, sh = rect.sh;
   if (facing === 'user'){ ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
   const st = STYLES.find(s => s.id === camStyle) || STYLES[0];
-  ctx.filter = (st && st.live) || 'none';
+  // v4.1：美颜的录制部分（轻微对比提升 + 提亮）拼在风格滤镜后面，一起进画布位图从而进录制
+  const baseFilter = (st && st.live && st.live !== 'none') ? st.live : '';
+  ctx.filter = [baseFilter, liveBeautyFilter()].filter(Boolean).join(' ') || 'none';
   ctx.drawImage(camVideo, sx, sy, sw, sh, 0, 0, viewCanvas.width, viewCanvas.height);
   ctx.restore();
   ctx.filter = 'none';
@@ -1644,6 +1874,7 @@ function degradeToRaw(msg){
   if (procDegraded && !useProcessed) return;
   procDegraded = true;
   stopProcessing();
+  updateBeautyPreview(); // v4.1：降级为原始流，提亮改走 CSS（无绘制循环）
   applyVideoTransform(); // 降级后原始 video 可见，恢复镜像/数码变焦的 CSS 变换
   updateFocalNote(); // 降级后数码变焦不再进入录像，提示文案相应变化
   updateStabUI(); // 处理路径关闭，防抖 chip 状态同步（未生效由下面的 toast 如实告知）
@@ -1834,6 +2065,8 @@ function takePhoto(){
   ctx.drawImage(camVideo, sx, sy, sw, sh, 0, 0, c.width, c.height);
   // 烤入当前风格：与上传工具共用同一套逐像素变换（applyPixelStyle）
   applyPixelStyle(ctx, c.width, c.height, camStyle);
+  // v4.1：美颜（肤软细节硬 + 暖粉肤色 + 透亮提亮），照片路径完整效果
+  applyBeautyToPhoto(ctx, c.width, c.height);
   c.toBlob((blob) => {
     if (!blob){ showToast('拍照失败，请重试'); return; }
     const url = URL.createObjectURL(blob);
@@ -1846,7 +2079,8 @@ function takePhoto(){
     btnDownload.textContent = '下载照片 (.jpg)';
     const stName = (STYLES.find(s => s.id === camStyle) || STYLES[0]).name;
     const styleTag = camStyle === 'orig' ? '' : '已应用「' + stName + '」风格 · ';
-    resultNote.textContent = styleTag + '照片已保存（' + c.width + '×' + c.height + '）。';
+    const beautyOn = beauty.sharp > 0 || beauty.smooth > 0 || beauty.bright > 0;
+    resultNote.textContent = styleTag + '照片已保存（' + c.width + '×' + c.height + '）。' + (beautyOn ? '已应用美颜。' : '');
     camResult.classList.remove('hidden');
     hasResult = true;
     setThumbImg(url);
@@ -2034,6 +2268,7 @@ moreSheet.addEventListener('click', (e) => {
   if (!item) return;
   moreSheet.classList.add('hidden');
   if (item.dataset.action === 'range'){ setRangeOn(!rangeOn); return; }
+  if (item.dataset.action === 'beauty'){ openBeautyPanel(); return; }
   if (item.dataset.action === 'fullscreen'){ toggleFullscreen(); return; }
   switchView(item.dataset.goto);
 });
