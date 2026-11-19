@@ -76,6 +76,13 @@
   .cam-screen video#camVideo{
     position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000;
   }
+  /* 处理后的取景画布（风格实时预览 = 录制画面本身，两者永远一致） */
+  .cam-screen canvas#viewCanvas{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;background:#000;
+  }
+  /* 处理模式下：原始 video 缩到 1px 但保持播放（供画布逐帧读取），可见取景为处理画布 */
+  .cam-screen.proc-on video#camVideo{width:1px;height:1px;opacity:0;pointer-events:none}
+  .cam-screen.proc-on canvas#viewCanvas{display:block}
   /* 顶部图标行 */
   .cam-topbar{
     position:absolute;top:0;left:0;right:0;z-index:5;
@@ -124,7 +131,7 @@
   /* 焦段选择胶囊（截图样式：15 / 24mm / 50 / 85 / 250） */
   .focal-pill{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(172px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(272px + env(safe-area-inset-bottom));z-index:5;
     display:flex;align-items:center;gap:2px;
     background:rgba(0,0,0,.45);border-radius:999px;padding:6px 10px;
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
@@ -137,7 +144,7 @@
   .focal-pill button.on{background:rgba(255,255,255,.16);color:#f5c518}
   .focal-note{
     position:absolute;left:0;right:0;text-align:center;
-    bottom:calc(150px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(252px + env(safe-area-inset-bottom));z-index:5;
     font-size:.68rem;color:rgba(255,255,255,.65);text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;
   }
   /* 底部模式栏 */
@@ -152,6 +159,48 @@
     font-size:1rem;padding:8px 13px;white-space:nowrap;
   }
   .mode-tabs button.on{color:#f5c518;font-weight:700}
+  /* 取景器风格条（vivo 色彩风格式：横向卡片，位于模式栏上方、快门上方） */
+  .style-strip{
+    position:absolute;left:0;right:0;bottom:calc(176px + env(safe-area-inset-bottom));z-index:5;
+    display:flex;gap:8px;overflow-x:auto;padding:6px 12px 4px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    background:linear-gradient(0deg,rgba(0,0,0,.55),rgba(0,0,0,0));
+  }
+  .style-strip::-webkit-scrollbar{display:none}
+  .style-card{
+    flex:0 0 64px;text-align:center;cursor:pointer;border-radius:12px;padding:6px 4px 5px;
+    background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.18);
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  }
+  .style-card.on{border-color:#f5c518;background:rgba(245,197,24,.16)}
+  .style-card svg{width:46px;height:32px;display:block;margin:0 auto}
+  .style-card .nm{font-size:.62rem;color:#fff;margin-top:3px;line-height:1.25;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .style-card .en{font-size:.55rem;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 测距：框线与读数面板 */
+  .range-lines{position:absolute;inset:0;z-index:6;pointer-events:none}
+  .range-line{position:absolute;left:8%;right:8%;height:2px;background:rgba(245,197,24,.95);box-shadow:0 0 6px rgba(0,0,0,.6)}
+  .range-line .rl-handle{
+    position:absolute;right:-6px;top:-13px;width:28px;height:28px;border-radius:50%;
+    background:#f5c518;color:#000;font-size:.7rem;font-weight:700;
+    display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:grab;touch-action:none;
+  }
+  .range-line .rl-tag{position:absolute;left:0;top:-20px;font-size:.68rem;color:#f5c518;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+  .range-panel{
+    position:absolute;left:12px;right:12px;top:calc(104px + env(safe-area-inset-top));z-index:7;
+    background:rgba(20,18,14,.88);border:1px solid rgba(255,255,255,.14);border-radius:16px;
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    padding:12px 14px;color:#fff;
+  }
+  .range-panel .rp-title{font-size:.85rem;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+  .range-panel .rp-close{border:none;background:rgba(255,255,255,.14);color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:.9rem;line-height:1}
+  .range-panel .rp-row{font-size:.8rem;line-height:1.7;margin-top:6px;color:rgba(255,255,255,.85)}
+  .range-panel .rp-row b{color:#f5c518}
+  .range-panel .rp-inputs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .range-panel .rp-inputs label{font-size:.72rem;color:rgba(255,255,255,.65);display:block;margin-bottom:3px}
+  .range-panel .rp-inputs input{width:100%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:7px 8px;font-size:.85rem}
+  .range-panel .rp-inputs .fld{flex:1;min-width:90px}
+  .range-panel .rp-btn{border:none;cursor:pointer;border-radius:999px;background:var(--gold);color:#fff;font-size:.8rem;font-weight:600;padding:8px 16px;margin-top:10px}
+  .range-panel .rp-note{font-size:.68rem;color:rgba(255,255,255,.55);line-height:1.6;margin-top:8px}
   /* 底部快门行：缩略图 / 快门 / 翻转 */
   .cam-bottom{
     position:absolute;left:0;right:0;bottom:0;z-index:5;
@@ -189,7 +238,7 @@
   }
   @keyframes sheetup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
   .more-sheet .ms-title{color:#fff;font-size:.95rem;font-weight:700;text-align:center;margin-bottom:12px}
-  .ms-grid{display:flex;gap:12px;justify-content:center}
+  .ms-grid{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
   .ms-item{
     flex:1;max-width:110px;text-align:center;color:#fff;cursor:pointer;
     background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
@@ -229,7 +278,7 @@
   .voice-indicator .mic-dot{width:9px;height:9px;border-radius:50%;background:#4caf50;animation:pulse 1s infinite}
   .cam-toast{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(220px + env(safe-area-inset-bottom));z-index:8;
+    bottom:calc(330px + env(safe-area-inset-bottom));z-index:8;
     background:rgba(0,0,0,.7);color:#fff;font-size:.82rem;padding:9px 18px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;
   }
@@ -315,6 +364,21 @@
   .about-card ul{padding-left:1.2em;color:var(--ink2);font-size:.85rem}
   .about-card li{margin:4px 0}
 
+  /* ---- 本地作品库 ---- */
+  .lib-item{display:flex;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(180,160,130,.16)}
+  .lib-item:last-child{border-bottom:none}
+  .lib-ico{font-size:1.5rem;line-height:1;flex:0 0 auto}
+  .lib-meta{flex:1;min-width:0}
+  .lib-meta .lm-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lib-meta .lm-sub{font-size:.74rem;color:var(--ink2);margin-top:3px;line-height:1.5}
+  .lib-btns{display:flex;gap:6px;flex:0 0 auto}
+  .lib-btns .btn{padding:7px 12px;font-size:.76rem}
+
+  /* ---- 省市县三级选择 ---- */
+  .area-row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+  .area-row .fld{flex:1;min-width:90px}
+  .area-row .fld select{width:100%}
+
   /* ---- bottom nav ---- */
   .bottom-nav{
     position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:10;
@@ -336,14 +400,15 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v2 原型 · LifeHack</div>
+    <div class="ver">v3 原型 · LifeHack</div>
   </header>
 
   <main>
     <!-- ============ 相机（v2：全屏原生相机样式） ============ -->
     <section id="view-camera" class="view active">
-      <div class="cam-screen">
+      <div class="cam-screen" id="camScreen">
         <video id="camVideo" playsinline muted autoplay></video>
+        <canvas id="viewCanvas"></canvas>
 
         <!-- 顶部图标行 -->
         <div class="cam-topbar">
@@ -368,6 +433,31 @@
         <div class="voice-indicator hidden" id="voiceIndicator"><span class="mic-dot"></span>正在听…</div>
         <div class="cam-toast hidden" id="camToast"></div>
 
+        <!-- 测距框线（上下可拖动） -->
+        <div class="range-lines hidden" id="rangeLines">
+          <div class="range-line" id="rangeLineTop" style="top:42%">
+            <span class="rl-tag">顶部</span>
+            <span class="rl-handle" id="rangeHandleTop">↕</span>
+          </div>
+          <div class="range-line" id="rangeLineBottom" style="top:72%">
+            <span class="rl-tag">底部</span>
+            <span class="rl-handle" id="rangeHandleBottom">↕</span>
+          </div>
+        </div>
+
+        <!-- 测距面板 -->
+        <div class="range-panel hidden" id="rangePanel">
+          <div class="rp-title">测距辅助 <button class="rp-close" id="btnRangeClose" aria-label="关闭测距">×</button></div>
+          <div class="rp-row" id="rangeFocus">对焦距离：—</div>
+          <div class="rp-row" id="rangeEstimate">估算距离：请先标定（见下方）</div>
+          <div class="rp-inputs">
+            <div class="fld"><label>物体真实高度 (米)</label><input type="number" id="rangeObjH" value="1.7" min="0.01" step="0.1"></div>
+            <div class="fld"><label>标定距离 (米)</label><input type="number" id="rangeCalDist" value="3" min="0.1" step="0.1"></div>
+          </div>
+          <button class="rp-btn" id="btnCalibrate">用当前框线标定</button>
+          <div class="rp-note" id="rangeCalNote">未标定。标定方法：把已知高度的物体放在已知距离处，拖动框线对齐物体顶部和底部，输入高度与距离后点“标定”。浏览器拿不到深度传感器数据，估算误差约 ±10–20%，仅供参考。换焦段后需重新标定（或按变焦倍率换算）。</div>
+        </div>
+
         <!-- 未开相机时的占位 -->
         <div class="vf-empty" id="camEmpty">
           <div class="big">📷</div>
@@ -387,6 +477,9 @@
           <button data-focal="250">250</button>
         </div>
         <div class="focal-note" id="focalNote"></div>
+
+        <!-- 取景器风格条：选后预览与录制实时带风格 -->
+        <div class="style-strip" id="styleStrip"></div>
 
         <!-- 底部模式栏 -->
         <div class="mode-tabs" id="modeTabs">
@@ -422,8 +515,12 @@
               <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
               <div class="nm">我的</div><div class="ds">关于 · 隐私</div>
             </div>
+            <div class="ms-item" data-action="range">
+              <svg viewBox="0 0 24 24"><path d="M3 17h18M5 17v-3M12 17v-5M19 17v-3"/><circle cx="12" cy="8" r="2.5"/></svg>
+              <div class="nm">测距</div><div class="ds">对焦距离 · 估算</div>
+            </div>
           </div>
-          <p style="text-align:center;font-size:.72rem;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6">人像 / 风光模式的滤镜为实时预览，仅供取景参考；<br>录制与拍摄保存的是原始画面。</p>
+          <p style="text-align:center;font-size:.72rem;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6">取景器选的风格会一同保存到照片和视频里；<br>部分设备录像无法实时带风格时，会保存原画并提示。风格为模拟近似，非厂商官方色彩科学。</p>
           <button class="ms-close" id="btnMoreClose">关闭</button>
         </div>
 
@@ -444,8 +541,19 @@
     <section id="view-light" class="view">
       <div class="glass loc-row">
         <button class="btn small ghost" id="btnGeo">📍 使用我的位置</button>
-        <select id="citySel" aria-label="选择城市"></select>
         <input type="date" id="dateInput" aria-label="选择日期">
+      </div>
+      <div class="glass loc-row" id="areaPicker3" style="margin-top:10px">
+        <div class="area-row" style="width:100%">
+          <div class="fld"><label>省</label><select id="provSel" aria-label="选择省份"><option value="">正在加载…</option></select></div>
+          <div class="fld"><label>市</label><select id="citySel2" aria-label="选择城市"><option value="">—</option></select></div>
+          <div class="fld"><label>县（可选）</label><select id="countySel" aria-label="选择县"><option value="">不选县（使用市级）</option></select></div>
+        </div>
+        <p class="hint" id="areaNote" style="width:100%">正在加载全国省市县数据…</p>
+      </div>
+      <div class="glass loc-row hidden" id="citySelWrap" style="margin-top:10px">
+        <select id="citySel" aria-label="选择城市"></select>
+        <p class="hint">地区数据加载失败，已回退到常用城市列表。</p>
       </div>
       <div class="glass loc-row" id="customLoc" style="margin-top:10px">
         <div class="fld" style="flex:1;min-width:120px"><label>纬度</label><input type="number" id="latInput" step="0.01" value="32.0"></div>
@@ -572,6 +680,23 @@
         <p>一款为摄影爱好者做的网页相机：<b>预录制</b>帮你留住按下快门前的瞬间，<b>厂商风格模拟</b>让照片换上各家相机的色彩味道，<b>光线与计算工具</b>帮你算好每一次出片。</p>
         <p style="margin-top:10px">🔒 <b>隐私：</b>所有处理均在本地完成，照片、视频与位置不会上传到任何服务器。</p>
       </div>
+      <div class="glass about-card" id="libCard">
+        <h3>📸 已拍作品（本机保存）</h3>
+        <p class="hint" id="libTotal">正在加载…</p>
+        <p class="warn hidden" id="libWarn">本地已拍作品已超过 500MB，请及时下载并清理不用的作品，不要等浏览器空间满了再处理。</p>
+        <div id="libList" style="margin-top:6px"></div>
+        <p class="hint" style="margin-top:10px">作品存在本机浏览器中，不上传；清除浏览器数据会丢失，重要视频请及时下载到手机。</p>
+      </div>
+      <div class="glass about-card">
+        <h3>v3 新增</h3>
+        <ul>
+          <li>拍摄时实时风格模拟：取景器风格条，拍照与录像都带上所选风格</li>
+          <li>本地作品库：照片与视频自动存到本机浏览器，可随时下载或删除</li>
+          <li>全国省市县三级选择：光线页可精确到县（县为可选项）</li>
+          <li>测距辅助：对焦距离直读 + 参照物估算（需标定）</li>
+          <li>修复：缓存秒数按时间戳计算，不再数数据块</li>
+        </ul>
+      </div>
       <div class="glass about-card">
         <h3>v2 新增</h3>
         <ul>
@@ -591,7 +716,7 @@
           <li>AI 摄影助手：按场景推荐拍摄参数</li>
         </ul>
       </div>
-      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v2 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
+      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v3 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
     </section>
   </main>
 
@@ -792,6 +917,9 @@ const voiceIndicator = document.getElementById('voiceIndicator');
 const nrBadge = document.getElementById('nrBadge');
 const focalNote = document.getElementById('focalNote');
 const camToast = document.getElementById('camToast');
+const camScreen = document.getElementById('camScreen');
+const viewCanvas = document.getElementById('viewCanvas');
+const styleStrip = document.getElementById('styleStrip');
 
 let camStream = null, camRecorder = null;
 let bufferSecs = 30;
@@ -811,14 +939,12 @@ let zoomCap = null;
 let curFocal = 24;
 let curZoom = 1;
 let hasResult = false;
+let camStyle = 'orig'; // 取景器当前风格（与 STYLES 的 id 对应）
+let procCtx = null, procStream = null, procRaf = 0;
+let useProcessed = false;   // true = 录制处理过的流；false = 录原始流（降级）
+let procDegraded = false;   // 是否已降级（降级后不再尝试处理）
+let procSlowFrames = 0;
 
-const LIVE_FILTERS = {
-  none: 'none',
-  portrait: 'saturate(1.12) contrast(1.04) sepia(0.10) brightness(1.02)',
-  landscape: 'saturate(1.35) contrast(1.10) brightness(1.0)',
-  film: 'sepia(0.28) contrast(0.94) saturate(0.82) brightness(1.03)'
-};
-const MODE_FILTER = { prerecord: 'none', photo: 'none', video: 'none', portrait: 'portrait', landscape: 'landscape' };
 const MODE_NAME = { prerecord: '预录', photo: '拍照', video: '录像', portrait: '人像', landscape: '风光' };
 
 let toastTimer = null;
@@ -917,11 +1043,22 @@ async function startCamera(){
     if (!audioOn) showToast('未获得麦克风权限，录制无声');
   }
   detectZoom();
+  detectFocusDistance();
+  // 等视频尺寸就绪后再建处理画布（2 秒超时则按未就绪降级为原始流）
+  await new Promise((resolve) => {
+    if (camVideo.videoWidth > 0) resolve();
+    else {
+      camVideo.addEventListener('loadedmetadata', resolve, { once: true });
+      setTimeout(resolve, 2000);
+    }
+  });
+  startProcessing();
   startBuffering();
 }
 
 function stopCameraTracks(){
   clearInterval(bufTimerId);
+  stopProcessing();
   expectFinish = false;
   try { if (camRecorder && camRecorder.state !== 'inactive') camRecorder.stop(); } catch (e) {}
   camRecorder = null;
@@ -991,7 +1128,8 @@ function applyFocal(focal){
 }
 
 function applyDigitalZoom(want){
-  // 数码变焦：仅放大预览（CSS），录制的视频文件不受影响；拍照快照按同样倍率裁切
+  // 数码变焦：处理模式下画布按同样倍率裁切（预览、拍照与录像一致）；
+  // 降级为原始流时改用 CSS 放大预览（录像不受影响），拍照快照仍按同样倍率裁切
   curZoom = Math.min(10, Math.max(1, want));
   applyVideoTransform();
   updateFocalNote();
@@ -1007,10 +1145,121 @@ function updateFocalNote(){
   if (zoomCap){
     focalNote.textContent = '光学变焦 · 约 ' + curZoom.toFixed(1) + '×';
   } else if (curZoom > 1){
-    focalNote.textContent = '数码变焦约 ' + curZoom.toFixed(1) + '× · 仅影响预览与拍照，录制视频为原始画面';
+    focalNote.textContent = useProcessed
+      ? '数码变焦约 ' + curZoom.toFixed(1) + '× · 预览、拍照与录像均为裁切放大'
+      : '数码变焦约 ' + curZoom.toFixed(1) + '× · 仅影响预览与拍照，录制视频为原始画面';
   } else {
     focalNote.textContent = '';
   }
+}
+
+/* ---- 实时风格处理：视频 → 取景画布（应用风格滤镜）→ captureStream 供录制 ----
+   取舍说明：逐像素 JS 变换在 1080p/30fps 下手机 CPU 扛不住（约每秒 6000 万像素操作，
+   且 getImageData/putImageData 还有大量内存拷贝），因此实时路径用 GPU 加速的
+   ctx.filter 近似同一套风格参数（饱和/对比/色调），与拍照/上传工具的逐像素精确变换
+   共用 STYLES 定义、仅渲染器不同；颗粒等细节在实时路径中省略（视频里逐帧随机颗粒
+   本来就会闪烁成噪点，省略反而更干净）。预览画布即录制源，预览与录像永远一致。
+   处理会增加 CPU 占用与耗电；性能不足或接口不可用时降级为原始流并如实提示。 */
+function getRecordStream(){
+  return (useProcessed && procStream) ? procStream : camStream;
+}
+
+function startProcessing(){
+  stopProcessing();
+  procDegraded = false;
+  if (!camStream || !camVideo.videoWidth){
+    degradeToRaw('相机画面未就绪，录像为原画');
+    return;
+  }
+  if (typeof viewCanvas.captureStream !== 'function'){
+    degradeToRaw('当前浏览器不支持实时风格处理，录像为原画');
+    return;
+  }
+  try {
+    viewCanvas.width = camVideo.videoWidth;
+    viewCanvas.height = camVideo.videoHeight;
+    procCtx = viewCanvas.getContext('2d');
+    if (!procCtx || !('filter' in procCtx)){
+      degradeToRaw('当前浏览器不支持实时风格处理，录像为原画');
+      return;
+    }
+    const vStream = viewCanvas.captureStream(30);
+    const tracks = vStream.getVideoTracks().slice();
+    camStream.getAudioTracks().forEach(t => tracks.push(t)); // 画布流只有视频，音频轨要从原流补
+    procStream = new MediaStream(tracks);
+    useProcessed = true;
+    procSlowFrames = 0;
+    camScreen.classList.add('proc-on');
+    updateFocalNote(); // 处理模式下数码变焦会进入录像，提示文案相应变化
+    const loop = () => {
+      if (!camReady || !useProcessed) return;
+      drawProcessedFrame();
+      procRaf = requestAnimationFrame(loop);
+    };
+    procRaf = requestAnimationFrame(loop);
+  } catch (e) {
+    degradeToRaw('实时风格处理启动失败，录像为原画');
+  }
+}
+
+function drawProcessedFrame(){
+  if (!procCtx || !camVideo.videoWidth) return;
+  const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+  if (viewCanvas.width !== vw || viewCanvas.height !== vh){
+    viewCanvas.width = vw; viewCanvas.height = vh;
+  }
+  const t0 = performance.now();
+  const ctx = procCtx;
+  ctx.save();
+  // 数码变焦：裁切中央区域（与拍照快照同一逻辑）；光学变焦已在视频轨上生效
+  let sx = 0, sy = 0, sw = vw, sh = vh;
+  if (!zoomCap && curZoom > 1){
+    sw = vw / curZoom; sh = vh / curZoom;
+    sx = (vw - sw) / 2; sy = (vh - sh) / 2;
+  }
+  if (facing === 'user'){ ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
+  const st = STYLES.find(s => s.id === camStyle) || STYLES[0];
+  ctx.filter = (st && st.live) || 'none';
+  ctx.drawImage(camVideo, sx, sy, sw, sh, 0, 0, viewCanvas.width, viewCanvas.height);
+  ctx.restore();
+  ctx.filter = 'none';
+  // 性能看门狗：单帧处理持续超过 50ms 说明设备跟不上，降级为原始流；
+  // 录制中不切换，避免损坏正在录的片段
+  const dt = performance.now() - t0;
+  if (dt > 50){
+    procSlowFrames++;
+    if (procSlowFrames >= 20 && !isRecording){
+      degradeToRaw('当前设备性能不足，录像已切换为原画');
+    }
+  } else {
+    procSlowFrames = 0;
+  }
+}
+
+function stopProcessing(){
+  cancelAnimationFrame(procRaf); procRaf = 0;
+  if (procStream){
+    procStream.getVideoTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+    procStream = null;
+  }
+  procCtx = null;
+  useProcessed = false;
+  camScreen.classList.remove('proc-on');
+}
+
+function degradeToRaw(msg){
+  if (procDegraded && !useProcessed) return;
+  procDegraded = true;
+  stopProcessing();
+  applyVideoTransform(); // 降级后原始 video 可见，恢复镜像/数码变焦的 CSS 变换
+  updateFocalNote(); // 降级后数码变焦不再进入录像，提示文案相应变化
+  if (camReady && camRecorder && !isRecording){
+    // 录制器换回原始流：重建缓存（此前缓存的预录制片段会丢失）
+    try { if (camRecorder.state !== 'inactive') camRecorder.stop(); } catch (e) {}
+    camRecorder = null;
+    startBuffering();
+  }
+  showToast(msg || '当前设备录像无法实时带风格，已保存原画');
 }
 
 /* ---- 模式切换 ---- */
@@ -1019,13 +1268,11 @@ function setMode(mode){
   curMode = mode;
   document.querySelectorAll('#modeTabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
   shutterBtn.classList.toggle('photo-mode', mode === 'photo');
-  const f = MODE_FILTER[mode] || 'none';
-  camVideo.style.filter = LIVE_FILTERS[f] || 'none';
   if (mode === 'prerecord') showToast('预录模式：录制含前 ' + bufferSecs + ' 秒');
   else if (mode === 'photo') showToast('拍照模式：点快门保存照片');
   else if (mode === 'video') showToast('录像模式：不含预录制片段');
-  else if (mode === 'portrait') showToast('人像模式：预览应用人像风格');
-  else if (mode === 'landscape') showToast('风光模式：预览应用风光风格');
+  else if (mode === 'portrait'){ setCamStyle('canon'); showToast('人像模式：已切换到佳能人像风格'); }
+  else if (mode === 'landscape'){ setCamStyle('velvia'); showToast('风光模式：已切换到富士 Velvia 风格'); }
   updateBufferUI();
 }
 
@@ -1035,7 +1282,7 @@ function startBuffering(){
   camMime = pickMime();
   ringChunks = []; savedChunks = []; headerChunk = null;
   try {
-    camRecorder = new MediaRecorder(camStream, {
+    camRecorder = new MediaRecorder(getRecordStream(), {
       mimeType: camMime || undefined,
       videoBitsPerSecond: 8000000
     });
@@ -1073,11 +1320,21 @@ function trimRing(){
   while (ringChunks.length && ringChunks[0].t < cutoff) ringChunks.shift();
 }
 
+/* 按时间戳算一段数据块覆盖的真实秒数（Android Chrome 不保证每秒出一个块，
+   实际约按关键帧间隔出块；按块数算会把 15 秒缓存算成 4–5 秒）。空块返回 0。 */
+function chunksSeconds(chunks){
+  if (!chunks || !chunks.length) return 0;
+  if (chunks.length === 1) return 1; // 只有一个块时按约 1 秒估算
+  const span = (chunks[chunks.length - 1].t - chunks[0].t) / 1000;
+  const avg = span / (chunks.length - 1);
+  return Math.round(span + avg);
+}
+
 function updateBufferUI(){
   trimRing();
   const show = camReady && (curMode === 'prerecord' || curMode === 'portrait' || curMode === 'landscape');
   bufferBadge.classList.toggle('hidden', !show);
-  if (show) bufferText.textContent = '正在缓存 ' + ringChunks.length + ' 秒';
+  if (show) bufferText.textContent = '正在缓存 ' + chunksSeconds(ringChunks) + ' 秒';
 }
 
 function onShutter(){
@@ -1098,7 +1355,7 @@ function toggleRecord(){
     recTimerChip.textContent = '00:00';
     camResult.classList.add('hidden');
     recTimerId = setInterval(() => { recTimerChip.textContent = fmtTimer(Date.now() - recStartTime); }, 500);
-    showToast(curMode === 'video' ? '开始录像' : '开始录像（含 ' + savedChunks.length + ' 秒预录制）');
+    showToast(curMode === 'video' ? '开始录像' : '开始录像（含 ' + chunksSeconds(savedChunks) + ' 秒预录制）');
   } else {
     stopRecording();
   }
@@ -1136,15 +1393,19 @@ function finishRecording(){
   btnDownload.href = url;
   btnDownload.download = fname;
   btnDownload.textContent = '下载视频 (.' + ext + ')';
-  const totalSec = savedChunks.length;
-  const styleTag = (curMode === 'portrait' || curMode === 'landscape') ? MODE_NAME[curMode] + '预览风格 · ' : '';
+  const totalSec = chunksSeconds(savedChunks);
+  const stName = (STYLES.find(s => s.id === camStyle) || STYLES[0]).name;
+  const styleTag = procDegraded
+    ? '当前设备录像无法实时带风格，已保存原画。'
+    : (camStyle === 'orig' ? '' : '已应用「' + stName + '」风格 · ');
   resultNote.textContent = styleTag + '已保存约 ' + totalSec + ' 秒'
     + (curMode === 'video' ? '（纯录像，不含预录制）' : '（含预录制）')
-    + (ext === 'webm' ? '。本浏览器录制为 WebM 格式；后续版本将内置 MP4 转换。' : '。已录制为 MP4 格式，可直接保存到相册。')
+    + (ext === 'webm' ? '。本浏览器录制为 WebM 格式；后续版本将内置 MP4 转换。' : '。已录制为 MP4 格式，点下载保存到手机（位于下载文件夹，相册一般会自动显示）。')
     + (audioOn ? '' : '本次录制无声（未获得麦克风权限）。');
   camResult.classList.remove('hidden');
   hasResult = true;
   setVideoThumb(resultVideo);
+  saveClip({ kind: 'video', blob: blob, name: fname, seconds: totalSec, mode: MODE_NAME[curMode], style: procDegraded ? '原画' : stName });
   recTimerChip.textContent = '00:00';
   restartBuffering();
 }
@@ -1174,6 +1435,8 @@ function takePhoto(){
     ctx.scale(-1, 1);
   }
   ctx.drawImage(camVideo, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  // 烤入当前风格：与上传工具共用同一套逐像素变换（applyPixelStyle）
+  applyPixelStyle(ctx, c.width, c.height, camStyle);
   c.toBlob((blob) => {
     if (!blob){ showToast('拍照失败，请重试'); return; }
     const url = URL.createObjectURL(blob);
@@ -1184,11 +1447,13 @@ function takePhoto(){
     btnDownload.href = url;
     btnDownload.download = fname;
     btnDownload.textContent = '下载照片 (.jpg)';
-    const styleTag = (curMode === 'portrait' || curMode === 'landscape') ? MODE_NAME[curMode] + '预览风格 · ' : '';
-    resultNote.textContent = styleTag + '照片已保存（' + c.width + '×' + c.height + '）。预览滤镜不影响保存的原始画面。';
+    const stName = (STYLES.find(s => s.id === camStyle) || STYLES[0]).name;
+    const styleTag = camStyle === 'orig' ? '' : '已应用「' + stName + '」风格 · ';
+    resultNote.textContent = styleTag + '照片已保存（' + c.width + '×' + c.height + '）。';
     camResult.classList.remove('hidden');
     hasResult = true;
     setThumbImg(url);
+    saveClip({ kind: 'photo', blob: blob, name: fname, seconds: 0, mode: MODE_NAME[curMode], style: stName });
   }, 'image/jpeg', 0.92);
 }
 
@@ -1342,6 +1607,7 @@ moreSheet.addEventListener('click', (e) => {
   const item = e.target.closest('.ms-item');
   if (!item) return;
   moreSheet.classList.add('hidden');
+  if (item.dataset.action === 'range'){ setRangeOn(!rangeOn); return; }
   switchView(item.dataset.goto);
 });
 
@@ -1370,6 +1636,98 @@ CITIES.forEach((c, i) => {
   o.value = i; o.textContent = c[0];
   citySel.appendChild(o);
 });
+
+/* ---- 全国省市县三级选择（数据来自同目录 china-area.json；加载失败则回退 12 城市） ---- */
+const provSel = document.getElementById('provSel');
+const citySel2 = document.getElementById('citySel2');
+const countySel = document.getElementById('countySel');
+const areaNote = document.getElementById('areaNote');
+const areaPicker3 = document.getElementById('areaPicker3');
+const citySelWrap = document.getElementById('citySelWrap');
+let areaData = null;
+
+function fillSelect(sel, items, placeholder){
+  sel.innerHTML = '';
+  if (placeholder){
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = placeholder;
+    sel.appendChild(o);
+  }
+  items.forEach((it, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = it.n;
+    sel.appendChild(o);
+  });
+}
+function applyAreaCoords(la, ln, label){
+  latInput.value = la; lngInput.value = ln;
+  locNote.textContent = '当前位置：' + label + '（' + la + ', ' + ln + '）。';
+  renderLight();
+}
+function onProvChange(){
+  const p = areaData.provinces[parseInt(provSel.value, 10)];
+  if (!p) return;
+  fillSelect(citySel2, p.c || [], null);
+  if (!(p.c && p.c.length)){
+    // 该省无下级数据（如台湾省）：直接用省级坐标
+    fillSelect(countySel, [], '不选县（使用市级）');
+    applyAreaCoords(p.la, p.ln, p.n);
+    return;
+  }
+  citySel2.selectedIndex = 0;
+  onCityChange();
+}
+function onCityChange(){
+  const p = areaData.provinces[parseInt(provSel.value, 10)];
+  const c = p && p.c && p.c[parseInt(citySel2.value, 10)];
+  if (!c) return;
+  fillSelect(countySel, c.c || [], '不选县（使用市级）');
+  countySel.selectedIndex = 0;
+  applyAreaCoords(c.la, c.ln, p.n + c.n);
+}
+function onCountyChange(){
+  const p = areaData.provinces[parseInt(provSel.value, 10)];
+  const c = p && p.c && p.c[parseInt(citySel2.value, 10)];
+  if (!c) return;
+  if (countySel.value === ''){
+    applyAreaCoords(c.la, c.ln, p.n + c.n);
+    return;
+  }
+  const k = c.c[parseInt(countySel.value, 10)];
+  if (k) applyAreaCoords(k.la, k.ln, p.n + c.n + k.n);
+}
+provSel.addEventListener('change', onProvChange);
+citySel2.addEventListener('change', onCityChange);
+countySel.addEventListener('change', onCountyChange);
+
+fetch('china-area.json')
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(d => {
+    if (!d || !Array.isArray(d.provinces) || d.provinces.length < 30) throw new Error('数据格式异常');
+    areaData = d;
+    fillSelect(provSel, d.provinces, null);
+    // 默认：江苏省 → 南通市 → 不选县（与旧默认值一致）
+    let pi = d.provinces.findIndex(p => p.n.indexOf('江苏') >= 0);
+    if (pi < 0) pi = 0;
+    provSel.value = pi;
+    const p = d.provinces[pi];
+    fillSelect(citySel2, p.c || [], null);
+    let ci = (p.c || []).findIndex(c => c.n.indexOf('南通') >= 0);
+    if (ci < 0) ci = 0;
+    citySel2.value = ci;
+    onCityChange();
+    let cityCount = 0, countyCount = 0;
+    d.provinces.forEach(pr => {
+      cityCount += (pr.c || []).length;
+      (pr.c || []).forEach(ct => { countyCount += (ct.c || []).length; });
+    });
+    areaNote.textContent = '已加载全国 ' + d.provinces.length + ' 省 · ' + cityCount + ' 市 · ' + countyCount + ' 县区。选到市即可用，县为可选项。';
+  })
+  .catch(() => {
+    // 加载失败：隐藏三级选择器，显示原有 12 城市下拉
+    areaPicker3.classList.add('hidden');
+    citySelWrap.classList.remove('hidden');
+  });
 const MOON_ICONS = { '新月': '🌑', '娥眉月': '🌒', '上弦月': '🌓', '盈凸月': '🌔', '满月': '🌕', '亏凸月': '🌖', '下弦月': '🌗', '残月': '🌘' };
 
 function selectedDate(){
@@ -1504,11 +1862,14 @@ function applySCurve(v, strength){
 }
 function applyLift(v, lift){ return clamp255(v * (1 - lift / 255) + lift); }
 
-/* 每种风格 = 像素变换函数。均为模拟近似，非厂商官方色彩科学。 */
+/* 每种风格 = 像素变换函数 fn（精确变换，拍照与上传工具用）+ live（GPU 滤镜近似，
+   实时视频用，与 fn 共用同一套风格参数、仅渲染器不同）。均为模拟近似，非厂商官方色彩科学。 */
 const STYLES = [
   { id: 'orig', name: '原图', en: 'Original', body: '#8a8578', top: '#6e695e', accent: '#c9c2b4',
+    live: 'none',
     fn: (r, g, b) => [r, g, b] },
   { id: 'cc', name: '富士 Classic Chrome', en: 'FUJIFILM', body: '#3a3a3a', top: '#c8c4b8', accent: '#b7791f',
+    live: 'saturate(0.78) contrast(1.05) sepia(0.10) brightness(1.03)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 0.78);
       p = [applySCurve(p[0], 0.25), applySCurve(p[1], 0.25), applySCurve(p[2], 0.25)];
@@ -1518,24 +1879,28 @@ const STYLES = [
       return [clamp255(p[0] + n), clamp255(p[1] + n), clamp255(p[2] + n)];
     } },
   { id: 'velvia', name: '富士 Velvia', en: 'FUJIFILM', body: '#2e2e2e', top: '#c8c4b8', accent: '#2f7d4f',
+    live: 'saturate(1.38) contrast(1.08)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 1.38);
       p = applyContrast(p[0], p[1], p[2], 1.08);
       return [p[0], clamp255(p[1] * 1.04), clamp255(p[2] * 1.05)];
     } },
   { id: 'canon', name: '佳能人像', en: 'Canon', body: '#1c1c1c', top: '#1c1c1c', accent: '#c8102e',
+    live: 'saturate(1.12) contrast(0.96) sepia(0.08)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 1.12);
       p = applyContrast(p[0], p[1], p[2], 0.96);
       return [clamp255(p[0] * 1.05), p[1], clamp255(p[2] * 0.94)];
     } },
   { id: 'nikon', name: '尼康鲜艳', en: 'Nikon', body: '#1c1c1c', top: '#1c1c1c', accent: '#f5c518',
+    live: 'saturate(1.28) contrast(1.10)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 1.28);
       p = applyContrast(p[0], p[1], p[2], 1.10);
       return [p[0], p[1], clamp255(p[2] * 1.04)];
     } },
   { id: 'sony', name: '索尼胶片', en: 'SONY', body: '#242424', top: '#242424', accent: '#e67e22',
+    live: 'saturate(0.88) contrast(0.97) brightness(1.04) sepia(0.04)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 0.88);
       p = applyContrast(p[0], p[1], p[2], 0.97);
@@ -1543,18 +1908,21 @@ const STYLES = [
       return [clamp255(p[0] * 1.03), p[1], p[2]];
     } },
   { id: 'hassel', name: '哈苏自然', en: 'Hasselblad', body: '#2b2b2b', top: '#2b2b2b', accent: '#e8622c',
+    live: 'saturate(1.02) contrast(1.03)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 1.02);
       p = applyContrast(p[0], p[1], p[2], 1.03);
       return p;
     } },
   { id: 'g7x3', name: 'G7X3', en: 'Canon G7X III', body: '#1c1c1c', top: '#3a3a3a', accent: '#c8102e',
+    live: 'saturate(1.18) contrast(1.06) sepia(0.06)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 1.18);
       p = applyContrast(p[0], p[1], p[2], 1.06);
       return [clamp255(p[0] * 1.04), p[1], clamp255(p[2] * 0.96)];
     } },
   { id: 'x100v', name: 'X100V', en: 'FUJIFILM X100V', body: '#3a3a3a', top: '#d8d2c2', accent: '#b7791f',
+    live: 'saturate(1.05) contrast(1.04) brightness(1.02) sepia(0.05)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 1.05);
       p = [applySCurve(p[0], 0.2), applySCurve(p[1], 0.2), applySCurve(p[2], 0.2)];
@@ -1615,13 +1983,11 @@ styleFile.addEventListener('change', () => {
   img.src = url;
 });
 
-function applyStyle(){
-  if (!styleImg) return;
-  const ctx = styleCanvas.getContext('2d');
-  ctx.drawImage(styleImg, 0, 0, styleCanvas.width, styleCanvas.height);
-  const st = STYLES.find(s => s.id === curStyle) || STYLES[0];
+/* 逐像素风格变换（拍照快照与上传工具共用同一实现，不写两套） */
+function applyPixelStyle(ctx, w, h, styleId){
+  const st = STYLES.find(s => s.id === styleId) || STYLES[0];
   if (st.id === 'orig') return;
-  const imgData = ctx.getImageData(0, 0, styleCanvas.width, styleCanvas.height);
+  const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   for (let i = 0; i < d.length; i += 4){
     const p = st.fn(d[i], d[i + 1], d[i + 2]);
@@ -1630,12 +1996,39 @@ function applyStyle(){
   ctx.putImageData(imgData, 0, 0);
 }
 
+function applyStyle(){
+  if (!styleImg) return;
+  const ctx = styleCanvas.getContext('2d');
+  ctx.drawImage(styleImg, 0, 0, styleCanvas.width, styleCanvas.height);
+  applyPixelStyle(ctx, styleCanvas.width, styleCanvas.height, curStyle);
+}
+
 styleRow.addEventListener('click', (e) => {
   const c = e.target.closest('.cam-card'); if (!c) return;
   document.querySelectorAll('#styleRow .cam-card').forEach(el => el.classList.remove('on'));
   c.classList.add('on');
   curStyle = c.dataset.style;
   applyStyle();
+});
+
+/* ---- 取景器风格条（与上传工具共用 STYLES 定义与 cameraSVG 插画） ---- */
+STYLES.forEach((s) => {
+  const d = document.createElement('div');
+  d.className = 'style-card' + (s.id === 'orig' ? ' on' : '');
+  d.dataset.style = s.id;
+  d.innerHTML = cameraSVG(s.body, s.top, s.accent) + '<div class="nm">' + s.name + '</div><div class="en">' + s.en + '</div>';
+  styleStrip.appendChild(d);
+});
+function setCamStyle(id){
+  if (!STYLES.some(s => s.id === id)) return;
+  camStyle = id;
+  document.querySelectorAll('#styleStrip .style-card').forEach(el => el.classList.toggle('on', el.dataset.style === id));
+}
+styleStrip.addEventListener('click', (e) => {
+  const c = e.target.closest('.style-card'); if (!c) return;
+  setCamStyle(c.dataset.style);
+  const st = STYLES.find(s => s.id === camStyle);
+  showToast(st.id === 'orig' ? '已切换为原图' : '已切换到' + st.name + '风格');
 });
 
 btnStyleDownload.addEventListener('click', () => {
@@ -1781,6 +2174,262 @@ document.getElementById('btnNd').addEventListener('click', () => {
   out.innerHTML = '加 ND 后快门时间：<b>' + fmtShutter(ndTime(base, stops)) + '</b>（基础 ' + fmtShutter(base) + '，+' + stops + ' 档）';
 });
 
+/* ================= 本地作品库（IndexedDB 持久化） ================= */
+const DB_NAME = 'zhuiguang-clips';
+const DB_STORE = 'clips';
+const LIB_WARN_BYTES = 500 * 1024 * 1024;
+let libDb = null;
+
+function openLibDb(){
+  return new Promise((resolve, reject) => {
+    if (libDb){ resolve(libDb); return; }
+    if (!window.indexedDB){ reject(new Error('不支持 IndexedDB')); return; }
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(DB_STORE)){
+        db.createObjectStore(DB_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => { libDb = req.result; resolve(libDb); };
+    req.onerror = () => reject(req.error || new Error('打开数据库失败'));
+  });
+}
+function libTx(mode){
+  return openLibDb().then(db => db.transaction(DB_STORE, mode).objectStore(DB_STORE));
+}
+function fmtBytes(b){
+  if (b === null || b === undefined || isNaN(b)) return '—';
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(1) + ' MB';
+}
+function fmtLibTime(t){
+  const d = new Date(t);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+    + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+/* 保存一条作品。失败只提示，不影响录制/拍照流程。 */
+function saveClip(info){
+  if (!window.indexedDB) return;
+  const rec = {
+    id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+    kind: info.kind, time: Date.now(), name: info.name,
+    seconds: info.seconds || 0, size: info.blob.size,
+    blob: info.blob, mode: info.mode || '', style: info.style || ''
+  };
+  libTx('readwrite').then(store => {
+    const req = store.put(rec);
+    req.onsuccess = () => { renderLibrary(); };
+    req.onerror = () => { showToast('本地保存失败，请直接点下载'); };
+  }).catch(() => { showToast('本地保存失败，请直接点下载'); });
+}
+function getAllClips(){
+  return libTx('readonly').then(store => new Promise((resolve, reject) => {
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error || new Error('读取失败'));
+  }));
+}
+function deleteClip(id){
+  libTx('readwrite').then(store => {
+    const req = store.delete(id);
+    req.onsuccess = () => renderLibrary();
+    req.onerror = () => showToast('删除失败，请重试');
+  }).catch(() => showToast('删除失败，请重试'));
+}
+function downloadClip(id){
+  libTx('readonly').then(store => {
+    const req = store.get(id);
+    req.onsuccess = () => {
+      const rec = req.result;
+      if (!rec){ showToast('找不到这条作品'); return; }
+      const url = URL.createObjectURL(rec.blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = rec.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    };
+    req.onerror = () => showToast('读取失败，请重试');
+  }).catch(() => showToast('读取失败，请重试'));
+}
+const libTotal = document.getElementById('libTotal');
+const libWarn = document.getElementById('libWarn');
+const libList = document.getElementById('libList');
+function renderLibrary(){
+  if (!window.indexedDB){
+    libTotal.textContent = '当前浏览器不支持本地保存，请每次拍摄后直接点下载。';
+    libList.innerHTML = '';
+    return;
+  }
+  getAllClips().then(list => {
+    list.sort((a, b) => b.time - a.time);
+    const total = list.reduce((s, r) => s + (r.size || 0), 0);
+    libTotal.textContent = '共 ' + list.length + ' 条作品，总占用 ' + fmtBytes(total) + '。';
+    libWarn.classList.toggle('hidden', total <= LIB_WARN_BYTES);
+    if (!list.length){
+      libList.innerHTML = '<p class="hint">还没有作品。拍摄照片或录制视频后会自动保存在这里。</p>';
+      return;
+    }
+    libList.innerHTML = list.map(r => {
+      const dur = r.kind === 'video' ? (' · 约 ' + r.seconds + ' 秒') : '';
+      const tag = [r.mode, r.style].filter(Boolean).join(' · ');
+      return '<div class="lib-item">'
+        + '<div class="lib-ico">' + (r.kind === 'video' ? '🎬' : '📷') + '</div>'
+        + '<div class="lib-meta"><div class="lm-name">' + escapeHtml(r.name) + '</div>'
+        + '<div class="lm-sub">' + fmtLibTime(r.time) + dur + ' · ' + fmtBytes(r.size) + (tag ? '<br>' + escapeHtml(tag) : '') + '</div></div>'
+        + '<div class="lib-btns"><button class="btn small" data-dl="' + r.id + '">下载</button>'
+        + '<button class="btn small ghost" data-del="' + r.id + '">删除</button></div></div>';
+    }).join('');
+  }).catch(() => {
+    libTotal.textContent = '读取本地作品失败。';
+  });
+}
+libList.addEventListener('click', (e) => {
+  const dl = e.target.closest('[data-dl]');
+  const del = e.target.closest('[data-del]');
+  if (dl) downloadClip(dl.dataset.dl);
+  else if (del) deleteClip(del.dataset.del);
+});
+
+/* ================= 测距辅助 ================= */
+/* 技术边界（界面上也如实写明）：浏览器拿不到手机的深度传感器/激光测距数据，
+   做不到激光测距仪的精度；以下两种都是估算。对焦距离是相机当前对焦平面的读数，
+   参照物估算是按标定换算的，误差约 ±10–20%，仅供参考。 */
+const rangeLines = document.getElementById('rangeLines');
+const rangePanel = document.getElementById('rangePanel');
+const rangeLineTop = document.getElementById('rangeLineTop');
+const rangeLineBottom = document.getElementById('rangeLineBottom');
+const rangeFocus = document.getElementById('rangeFocus');
+const rangeEstimate = document.getElementById('rangeEstimate');
+const rangeCalNote = document.getElementById('rangeCalNote');
+const rangeObjH = document.getElementById('rangeObjH');
+const rangeCalDist = document.getElementById('rangeCalDist');
+let rangeOn = false, focusDistSupported = false, focusTimer = null;
+let lineTopPct = 42, lineBotPct = 72;
+
+function detectFocusDistance(){
+  focusDistSupported = false;
+  try {
+    const vTrack = camStream && camStream.getVideoTracks()[0];
+    if (vTrack && vTrack.getCapabilities){
+      const caps = vTrack.getCapabilities();
+      if (caps.focusDistance) focusDistSupported = true;
+    }
+  } catch (e) {}
+}
+function updateFocusReadout(){
+  if (!focusDistSupported){
+    rangeFocus.textContent = '对焦距离：当前设备/浏览器不支持读取对焦距离';
+    return;
+  }
+  try {
+    const vTrack = camStream.getVideoTracks()[0];
+    const s = vTrack.getSettings();
+    if (typeof s.focusDistance === 'number'){
+      rangeFocus.textContent = '对焦距离：约 ' + s.focusDistance.toFixed(2) + ' 米（相机当前对焦平面）';
+    } else {
+      rangeFocus.textContent = '对焦距离：读取不到数值';
+    }
+  } catch (e) {
+    rangeFocus.textContent = '对焦距离：读取失败';
+  }
+}
+function getCalibration(){
+  try {
+    const raw = localStorage.getItem('zg-range-cal');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function updateEstimate(){
+  const cal = getCalibration();
+  const h = parseFloat(rangeObjH.value);
+  if (!cal){
+    rangeEstimate.textContent = '估算距离：请先标定（见下方）';
+    return;
+  }
+  if (isNaN(h) || h <= 0){
+    rangeEstimate.textContent = '估算距离：请输入有效的物体高度';
+    return;
+  }
+  const vfH = camScreen.clientHeight || window.innerHeight;
+  const pxH = Math.max(1, (lineBotPct - lineTopPct) / 100 * vfH);
+  // 换焦段：按变焦倍率换算等效焦距（未重新标定，结果更不准，如实注明）
+  let equiv = cal.equiv;
+  let scaled = false;
+  if (cal.focal !== curFocal && cal.zoom > 0 && curZoom > 0){
+    equiv = cal.equiv * (curZoom / cal.zoom);
+    scaled = true;
+  }
+  const dist = h * equiv / pxH;
+  rangeEstimate.innerHTML = '估算距离：约 <b>' + dist.toFixed(1) + ' 米</b>（估算，误差约 ±10–20%，仅供参考）'
+    + (scaled ? '<br><span style="font-size:.72rem">已按变焦倍率换算（标定于 ' + cal.focal + 'mm，当前 ' + curFocal + 'mm），建议重新标定</span>' : '');
+}
+function setRangeOn(on){
+  rangeOn = on;
+  rangeLines.classList.toggle('hidden', !on);
+  rangePanel.classList.toggle('hidden', !on);
+  clearInterval(focusTimer); focusTimer = null;
+  if (on){
+    if (!camReady) showToast('请先打开相机再使用测距');
+    updateFocusReadout();
+    updateEstimate();
+    focusTimer = setInterval(() => { if (rangeOn) updateFocusReadout(); }, 800);
+    const cal = getCalibration();
+    if (cal){
+      rangeCalNote.textContent = '已标定（' + cal.focal + 'mm，物体 ' + cal.objH + ' 米 @ ' + cal.dist + ' 米）。浏览器拿不到深度传感器数据，估算误差约 ±10–20%，仅供参考。换焦段后需重新标定（或按变焦倍率换算）。';
+    }
+  }
+}
+document.getElementById('btnRangeClose').addEventListener('click', () => setRangeOn(false));
+document.getElementById('btnCalibrate').addEventListener('click', () => {
+  const h = parseFloat(rangeObjH.value);
+  const d = parseFloat(rangeCalDist.value);
+  if (isNaN(h) || h <= 0 || isNaN(d) || d <= 0){
+    showToast('请输入有效的高度与标定距离');
+    return;
+  }
+  const vfH = camScreen.clientHeight || window.innerHeight;
+  const pxH = Math.max(1, (lineBotPct - lineTopPct) / 100 * vfH);
+  // 等效焦距（像素）= 距离 × 框线像素高 / 真实高度；按当前焦段保存
+  const equiv = d * pxH / h;
+  try {
+    localStorage.setItem('zg-range-cal', JSON.stringify({ focal: curFocal, zoom: curZoom, equiv: equiv, objH: h, dist: d }));
+  } catch (e) { showToast('标定保存失败（浏览器存储不可用）'); return; }
+  rangeCalNote.textContent = '已标定（' + curFocal + 'mm，物体 ' + h + ' 米 @ ' + d + ' 米）。浏览器拿不到深度传感器数据，估算误差约 ±10–20%，仅供参考。换焦段后需重新标定（或按变焦倍率换算）。';
+  showToast('标定完成');
+  updateEstimate();
+});
+rangeObjH.addEventListener('input', updateEstimate);
+/* 框线拖动（pointer 事件，手指拖动把手上下移动） */
+function bindLineDrag(handle, line, isTop){
+  let dragging = false;
+  const move = (ev) => {
+    if (!dragging) return;
+    const rect = camScreen.getBoundingClientRect();
+    let pct = (ev.clientY - rect.top) / rect.height * 100;
+    pct = Math.max(2, Math.min(96, pct));
+    if (isTop) lineTopPct = Math.min(pct, lineBotPct - 2);
+    else lineBotPct = Math.max(pct, lineTopPct + 2);
+    line.style.top = (isTop ? lineTopPct : lineBotPct) + '%';
+    updateEstimate();
+  };
+  handle.addEventListener('pointerdown', (ev) => {
+    dragging = true;
+    try { handle.setPointerCapture(ev.pointerId); } catch (e) {}
+    ev.preventDefault();
+  });
+  handle.addEventListener('pointermove', move);
+  const end = () => { dragging = false; };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+bindLineDrag(document.getElementById('rangeHandleTop'), rangeLineTop, true);
+bindLineDrag(document.getElementById('rangeHandleBottom'), rangeLineBottom, false);
+
 /* ================= 导航与初始化 ================= */
 function switchView(v){
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('on', n.dataset.view === v));
@@ -1788,6 +2437,7 @@ function switchView(v){
   document.getElementById('view-' + v).classList.add('active');
   document.body.classList.toggle('cam-active', v === 'camera');
   if (v === 'light') renderLight();
+  if (v === 'my') renderLibrary();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -1805,6 +2455,7 @@ document.querySelectorAll('.tool-card .t-head').forEach(head => {
 
 document.body.classList.add('cam-active'); // 默认视图为相机，全屏取景
 renderLight();
+renderLibrary();
 setInterval(() => {
   if (document.getElementById('view-light').classList.contains('active')) renderLight();
 }, 60000);
