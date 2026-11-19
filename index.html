@@ -126,12 +126,12 @@
     padding:5px 12px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
-  .vf-empty{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ddd;text-align:center;padding:24px;background:#111}
+  .vf-empty{position:absolute;inset:0 0 calc(180px + env(safe-area-inset-bottom)) 0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ddd;text-align:center;padding:24px;background:#111}
   .vf-empty .big{font-size:2.2rem}
   /* 焦段选择胶囊（截图样式：15 / 24mm / 50 / 85 / 250） */
   .focal-pill{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(272px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(250px + env(safe-area-inset-bottom));z-index:5;
     display:flex;align-items:center;gap:2px;
     background:rgba(0,0,0,.45);border-radius:999px;padding:6px 10px;
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
@@ -144,7 +144,7 @@
   .focal-pill button.on{background:rgba(255,255,255,.16);color:#f5c518}
   .focal-note{
     position:absolute;left:0;right:0;text-align:center;
-    bottom:calc(252px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(230px + env(safe-area-inset-bottom));z-index:5;
     font-size:.68rem;color:rgba(255,255,255,.65);text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;
   }
   /* 底部模式栏 */
@@ -168,14 +168,14 @@
   }
   .style-strip::-webkit-scrollbar{display:none}
   .style-card{
-    flex:0 0 64px;text-align:center;cursor:pointer;border-radius:12px;padding:6px 4px 5px;
+    flex:0 0 54px;text-align:center;cursor:pointer;border-radius:10px;padding:4px 3px;
     background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.18);
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .style-card.on{border-color:#f5c518;background:rgba(245,197,24,.16)}
-  .style-card svg{width:46px;height:32px;display:block;margin:0 auto}
-  .style-card .nm{font-size:.62rem;color:#fff;margin-top:3px;line-height:1.25;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .style-card .en{font-size:.55rem;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .style-card svg{width:38px;height:26px;display:block;margin:0 auto}
+  .style-card .nm{font-size:.58rem;color:#fff;margin-top:2px;line-height:1.25;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .style-card .en{font-size:.52rem;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* 测距：框线与读数面板 */
   .range-lines{position:absolute;inset:0;z-index:6;pointer-events:none}
   .range-line{position:absolute;left:8%;right:8%;height:2px;background:rgba(245,197,24,.95);box-shadow:0 0 6px rgba(0,0,0,.6)}
@@ -468,18 +468,18 @@
 
         <div class="glass err-box hidden" id="camError" style="padding:14px 16px"></div>
 
-        <!-- 焦段选择胶囊 -->
-        <div class="focal-pill" id="focalPill">
+        <!-- 焦段选择胶囊（相机未打开时隐藏，避免遮挡打开按钮） -->
+        <div class="focal-pill hidden" id="focalPill">
           <button data-focal="15">15</button>
           <button data-focal="24" class="on">24<small>mm</small></button>
           <button data-focal="50">50</button>
           <button data-focal="85">85</button>
           <button data-focal="250">250</button>
         </div>
-        <div class="focal-note" id="focalNote"></div>
+        <div class="focal-note hidden" id="focalNote"></div>
 
-        <!-- 取景器风格条：选后预览与录制实时带风格 -->
-        <div class="style-strip" id="styleStrip"></div>
+        <!-- 取景器风格条：选后预览与录制实时带风格（相机未打开时隐藏） -->
+        <div class="style-strip hidden" id="styleStrip"></div>
 
         <!-- 底部模式栏 -->
         <div class="mode-tabs" id="modeTabs">
@@ -915,6 +915,7 @@ const btnVoice = document.getElementById('btnVoice');
 const voiceNote = document.getElementById('voiceNote');
 const voiceIndicator = document.getElementById('voiceIndicator');
 const nrBadge = document.getElementById('nrBadge');
+const focalPill = document.getElementById('focalPill');
 const focalNote = document.getElementById('focalNote');
 const camToast = document.getElementById('camToast');
 const camScreen = document.getElementById('camScreen');
@@ -1032,6 +1033,10 @@ async function startCamera(){
   try { await camVideo.play(); } catch (e) {}
   camEmpty.classList.add('hidden');
   camReady = true;
+  // 相机打开后才显示焦段胶囊与风格条（未打开时它们会遮挡打开按钮）
+  focalPill.classList.remove('hidden');
+  focalNote.classList.remove('hidden');
+  styleStrip.classList.remove('hidden');
   // 降噪指示：仅当音频轨实际报告 noiseSuppression 开启时显示
   const aTracks = camStream.getAudioTracks();
   if (aTracks.length){
@@ -1070,6 +1075,9 @@ function stopCameraTracks(){
   curZoom = 1;
   bufferBadge.classList.add('hidden');
   nrBadge.classList.add('hidden');
+  focalPill.classList.add('hidden');
+  focalNote.classList.add('hidden');
+  styleStrip.classList.add('hidden');
   applyVideoTransform();
 }
 
