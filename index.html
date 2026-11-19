@@ -262,7 +262,8 @@
     border-radius:24px 24px 0 0;padding:14px 18px calc(20px + env(safe-area-inset-bottom));
     animation:sheetup .25s ease;
   }
-  @keyframes sheetup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+  /* v3.6：弹出动画只做上滑，不做淡入——淡入过程中面板半透明，下面的风格条/模式栏会透出来重在一起 */
+  @keyframes sheetup{from{transform:translateY(40px)}to{transform:none}}
   .more-sheet .ms-title{color:#fff;font-size:.95rem;font-weight:700;text-align:center;margin-bottom:12px}
   .ms-grid{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
   .ms-item{
@@ -282,7 +283,7 @@
   /* 拍摄结果面板（底部弹出） */
   .result-sheet{
     position:absolute;left:0;right:0;bottom:0;z-index:12;max-height:78%;
-    background:rgba(28,25,20,.95);
+    background:#1c1914; /* v3.6：改实色底，与更多面板一致，弹出时不透出下面内容 */
     -webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
     border-radius:24px 24px 0 0;padding:14px 18px calc(20px + env(safe-area-inset-bottom));
     overflow-y:auto;animation:sheetup .25s ease;
@@ -492,7 +493,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v3.5 原型 · LifeHack</div>
+    <div class="ver">v3.6 原型 · LifeHack</div>
   </header>
 
   <main>
