@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="追光相机：预录制相机 + 摄影工具箱。所有处理均在本地完成，不上传任何内容。">
+<title>追光相机</title>
+<style>
+  :root{
+    --bg1:#eceae6; --bg2:#f7f3ec;
+    --ink:#2b2620; --ink2:#7a7268; --ink3:#a39a8d;
+    --gold:#b7791f; --gold2:#c98a2d; --gold-soft:rgba(201,138,45,.14);
+    --red:#e5484d; --red-dark:#c93338;
+    --glass:rgba(255,255,255,.55);
+    --glass-strong:rgba(255,255,255,.72);
+    --border:rgba(255,255,255,.65);
+    --shadow:0 8px 24px rgba(120,100,70,.10);
+    --radius:20px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{font-size:16px}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+    color:var(--ink);
+    background:linear-gradient(160deg,var(--bg1) 0%,var(--bg2) 60%,#f3ede2 100%);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  /* ---- static warm orbs (ALL STATIC, subtle) ---- */
+  .orb{position:fixed;border-radius:50%;filter:blur(60px);pointer-events:none;z-index:0}
+  .orb1{width:340px;height:340px;left:-120px;top:-80px;background:radial-gradient(circle,rgba(201,138,45,.20),rgba(201,138,45,0) 70%)}
+  .orb2{width:300px;height:300px;right:-100px;top:38%;background:radial-gradient(circle,rgba(210,180,140,.22),rgba(210,180,140,0) 70%)}
+  .orb3{width:260px;height:260px;left:12%;bottom:-90px;background:radial-gradient(circle,rgba(180,175,165,.18),rgba(180,175,165,0) 70%)}
+
+  .app{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:0 16px calc(84px + env(safe-area-inset-bottom))}
+
+  /* ---- liquid glass card ---- */
+  .glass{
+    position:relative;
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.7), inset 0 -1px 0 rgba(180,160,130,.12);
+    overflow:hidden;
+  }
+  .glass::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(135deg,rgba(255,255,255,.45) 0%,rgba(255,255,255,.08) 32%,transparent 55%);
+  }
+  .glass > *{position:relative;z-index:1}
+
+  header{padding:20px 4px 12px;display:flex;align-items:baseline;justify-content:space-between}
+  header h1{font-size:1.35rem;font-weight:700;letter-spacing:.02em}
+  header h1 span{color:var(--gold)}
+  header .ver{font-size:.75rem;color:var(--ink3)}
+
+  .view{display:none}
+  .view.active{display:block;animation:fadein .25s ease}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  .section-title{font-size:.95rem;font-weight:700;margin:18px 4px 10px}
+  .hint{font-size:.78rem;color:var(--ink2);line-height:1.6}
+  .warn{font-size:.78rem;color:#9a6a14;line-height:1.6}
+
+  /* ---- camera view (v2: full-screen native-camera pattern) ---- */
+  /* 相机视图激活时：全屏黑色取景，隐藏页眉与底部导航 */
+  body.cam-active header, body.cam-active .bottom-nav{display:none}
+  body.cam-active .app{padding:0}
+  #view-camera.active{
+    position:fixed;inset:0;z-index:30;background:#000;
+    width:100%;height:100dvh;max-width:none;
+  }
+  .cam-screen{position:relative;width:100%;height:100%;overflow:hidden;background:#000}
+  .cam-screen video#camVideo{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000;
+  }
+  /* 顶部图标行 */
+  .cam-topbar{
+    position:absolute;top:0;left:0;right:0;z-index:5;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+    background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0));
+  }
+  .cam-topbar .t-left,.cam-topbar .t-right{display:flex;align-items:center;gap:10px}
+  .cam-icon-btn{
+    width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
+    background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  }
+  .cam-icon-btn svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .cam-icon-btn:active{background:rgba(255,255,255,.25)}
+  .cam-icon-btn.on{background:var(--gold);color:#fff}
+  .cam-chip{
+    border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;
+    font-size:.78rem;padding:6px 12px;border-radius:999px;cursor:pointer;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  }
+  .nr-badge{
+    font-size:.72rem;color:#a8e6a3;background:rgba(0,0,0,.35);
+    padding:5px 10px;border-radius:999px;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  }
+  .voice-note{
+    position:absolute;top:calc(58px + env(safe-area-inset-top));left:0;right:0;z-index:5;
+    text-align:center;font-size:.72rem;color:rgba(255,255,255,.85);pointer-events:none;
+    text-shadow:0 1px 3px rgba(0,0,0,.8);
+  }
+  /* 缓存 / 录制状态徽标 */
+  .vf-overlay{position:absolute;left:14px;top:calc(62px + env(safe-area-inset-top));z-index:5;display:flex;align-items:center;gap:6px;
+    background:rgba(0,0,0,.45);color:#fff;font-size:.75rem;padding:5px 10px;border-radius:999px;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .vf-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .rec-timer-chip{
+    position:absolute;right:14px;top:calc(62px + env(safe-area-inset-top));z-index:5;
+    background:rgba(0,0,0,.45);color:#fff;font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;
+    padding:5px 12px;border-radius:999px;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  }
+  .vf-empty{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ddd;text-align:center;padding:24px;background:#111}
+  .vf-empty .big{font-size:2.2rem}
+  /* 焦段选择胶囊（截图样式：15 / 24mm / 50 / 85 / 250） */
+  .focal-pill{
+    position:absolute;left:50%;transform:translateX(-50%);
+    bottom:calc(172px + env(safe-area-inset-bottom));z-index:5;
+    display:flex;align-items:center;gap:2px;
+    background:rgba(0,0,0,.45);border-radius:999px;padding:6px 10px;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  }
+  .focal-pill button{
+    border:none;background:transparent;color:rgba(255,255,255,.75);cursor:pointer;
+    font-size:.88rem;font-weight:600;padding:5px 11px;border-radius:999px;line-height:1.15;
+  }
+  .focal-pill button small{display:block;font-size:.6rem;font-weight:400;opacity:.8}
+  .focal-pill button.on{background:rgba(255,255,255,.16);color:#f5c518}
+  .focal-note{
+    position:absolute;left:0;right:0;text-align:center;
+    bottom:calc(150px + env(safe-area-inset-bottom));z-index:5;
+    font-size:.68rem;color:rgba(255,255,255,.65);text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;
+  }
+  /* 底部模式栏 */
+  .mode-tabs{
+    position:absolute;left:0;right:0;bottom:calc(104px + env(safe-area-inset-bottom));z-index:5;
+    display:flex;justify-content:center;gap:4px;
+    background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,0));
+    padding:26px 8px 6px;
+  }
+  .mode-tabs button{
+    border:none;background:transparent;color:rgba(255,255,255,.8);cursor:pointer;
+    font-size:1rem;padding:8px 13px;white-space:nowrap;
+  }
+  .mode-tabs button.on{color:#f5c518;font-weight:700}
+  /* 底部快门行：缩略图 / 快门 / 翻转 */
+  .cam-bottom{
+    position:absolute;left:0;right:0;bottom:0;z-index:5;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 26px calc(26px + env(safe-area-inset-bottom));
+    background:rgba(0,0,0,.72);
+  }
+  .thumb{
+    width:52px;height:52px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.12);
+    border:1.5px solid rgba(255,255,255,.5);cursor:pointer;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);font-size:.62rem;
+  }
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .shutter{
+    width:76px;height:76px;border-radius:50%;border:4px solid #fff;cursor:pointer;flex:0 0 auto;
+    background:radial-gradient(circle at 35% 30%,#f2666b,var(--red) 60%,var(--red-dark));
+    box-shadow:0 4px 18px rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;transition:transform .12s ease;
+  }
+  .shutter:active{transform:scale(.93)}
+  .shutter .sh-icon{width:30px;height:30px;border-radius:50%;background:#fff}
+  .shutter.recording{animation:pulse 1.2s infinite}
+  .shutter.recording .sh-icon{width:26px;height:26px;border-radius:6px;background:#fff}
+  .shutter.photo-mode{background:radial-gradient(circle at 35% 30%,#fff,#eee 70%,#ddd)}
+  .shutter.photo-mode .sh-icon{background:transparent}
+  .flip-btn{width:52px;height:52px;flex:0 0 auto}
+  .flip-btn svg{width:26px;height:26px}
+  /* 更多面板（底部弹出） */
+  .more-sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:12;
+    background:rgba(28,25,20,.92);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
+    border-radius:24px 24px 0 0;padding:14px 18px calc(20px + env(safe-area-inset-bottom));
+    animation:sheetup .25s ease;
+  }
+  @keyframes sheetup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+  .more-sheet .ms-title{color:#fff;font-size:.95rem;font-weight:700;text-align:center;margin-bottom:12px}
+  .ms-grid{display:flex;gap:12px;justify-content:center}
+  .ms-item{
+    flex:1;max-width:110px;text-align:center;color:#fff;cursor:pointer;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+    border-radius:16px;padding:14px 6px 10px;
+  }
+  .ms-item svg{width:26px;height:26px;display:block;margin:0 auto 6px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .ms-item .nm{font-size:.85rem;font-weight:600}
+  .ms-item .ds{font-size:.68rem;color:rgba(255,255,255,.6);margin-top:2px}
+  .ms-close{
+    display:block;margin:14px auto 0;border:none;background:rgba(255,255,255,.12);color:#fff;
+    font-size:.85rem;padding:8px 28px;border-radius:999px;cursor:pointer;
+  }
+  /* 拍摄结果面板（底部弹出） */
+  .result-sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:12;max-height:78%;
+    background:rgba(28,25,20,.95);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
+    border-radius:24px 24px 0 0;padding:14px 18px calc(20px + env(safe-area-inset-bottom));
+    overflow-y:auto;animation:sheetup .25s ease;
+  }
+  .result-sheet video,.result-sheet img.preview{width:100%;border-radius:14px;background:#000;display:block;max-height:44vh;object-fit:contain}
+  .result-sheet .rs-note{font-size:.8rem;color:rgba(255,255,255,.7);line-height:1.6;margin-top:10px}
+  .result-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .err-box{
+    position:absolute;left:14px;right:14px;top:calc(110px + env(safe-area-inset-top));z-index:6;
+    padding:14px 16px;border-radius:14px;border:1px solid rgba(229,72,77,.4);
+    background:rgba(60,10,10,.85);color:#ffd9d9;font-size:.85rem;line-height:1.6;
+  }
+  .err-box b{color:#fff}
+  .voice-indicator{
+    position:absolute;left:50%;transform:translateX(-50%);
+    top:calc(100px + env(safe-area-inset-top));z-index:5;
+    display:flex;align-items:center;gap:8px;
+    background:rgba(0,0,0,.55);color:#fff;font-size:.8rem;padding:7px 14px;border-radius:999px;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  }
+  .voice-indicator .mic-dot{width:9px;height:9px;border-radius:50%;background:#4caf50;animation:pulse 1s infinite}
+  .cam-toast{
+    position:absolute;left:50%;transform:translateX(-50%);
+    bottom:calc(220px + env(safe-area-inset-bottom));z-index:8;
+    background:rgba(0,0,0,.7);color:#fff;font-size:.82rem;padding:9px 18px;border-radius:999px;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;
+  }
+
+  /* ---- 通用控件（光线 / 工具视图使用） ---- */
+  .pills{display:flex;gap:6px}
+  .pill{
+    border:1px solid rgba(183,121,31,.35);background:rgba(255,255,255,.5);color:var(--ink);
+    font-size:.8rem;padding:5px 12px;border-radius:999px;cursor:pointer;
+    -webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);
+  }
+  .pill.on{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:600}
+  .btn{
+    display:inline-block;border:none;cursor:pointer;border-radius:999px;
+    background:linear-gradient(135deg,#d99a35,#b7791f);color:#fff;
+    font-size:.92rem;font-weight:600;padding:11px 26px;
+    box-shadow:0 6px 16px rgba(183,121,31,.35);
+  }
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:rgba(255,255,255,.6);color:var(--ink);box-shadow:none;border:1px solid rgba(183,121,31,.3)}
+  .btn.small{padding:8px 18px;font-size:.82rem}
+
+  /* ---- light view ---- */
+  .loc-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 16px}
+  select,input[type="date"],input[type="number"],input[type="text"]{
+    font-family:inherit;font-size:.9rem;color:var(--ink);
+    background:rgba(255,255,255,.75);border:1px solid rgba(183,121,31,.3);
+    border-radius:10px;padding:9px 10px;outline:none;
+  }
+  select:focus,input:focus{border-color:var(--gold)}
+  .count-card{padding:18px 16px;text-align:center;margin-top:12px}
+  .count-card .big{font-size:1.6rem;font-weight:700;color:var(--gold);margin:6px 0}
+  .count-card .sub{font-size:.82rem;color:var(--ink2)}
+  .kv-list{padding:8px 16px 14px}
+  .kv{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(180,160,130,.16)}
+  .kv:last-child{border-bottom:none}
+  .kv .k{font-size:.88rem;color:var(--ink2)}
+  .kv .v{font-size:.95rem;font-weight:600;text-align:right}
+  .kv .v small{display:block;font-size:.72rem;color:var(--ink3);font-weight:400}
+  .moon-card{padding:16px;margin-top:12px;display:flex;gap:14px;align-items:center}
+  .moon-ico{font-size:2.4rem;line-height:1}
+  .moon-info .name{font-size:1.05rem;font-weight:700}
+  .moon-info .d{font-size:.82rem;color:var(--ink2);margin-top:4px;line-height:1.5}
+
+  /* ---- tools view ---- */
+  .tool-card{padding:16px;margin-top:12px;cursor:pointer}
+  .tool-card .t-head{display:flex;justify-content:space-between;align-items:center}
+  .tool-card .t-name{font-size:1rem;font-weight:700}
+  .tool-card .t-desc{font-size:.8rem;color:var(--ink2);margin-top:4px;line-height:1.5}
+  .tool-card .t-arrow{color:var(--gold);font-size:1.1rem;transition:transform .2s}
+  .tool-card.open .t-arrow{transform:rotate(90deg)}
+  .tool-body{display:none;padding-top:14px}
+  .tool-card.open .tool-body{display:block}
+  .featured{border:1px solid rgba(201,138,45,.5)}
+  .featured .t-name::after{content:"核心";font-size:.68rem;color:#fff;background:var(--gold);border-radius:4px;padding:2px 6px;margin-left:8px;vertical-align:middle}
+  .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+  .form-row label{font-size:.8rem;color:var(--ink2);display:block;margin-bottom:4px}
+  .form-row .fld{flex:1;min-width:110px}
+  .form-row .fld select,.form-row .fld input{width:100%}
+  .result-line{font-size:.92rem;line-height:1.9;padding:10px 12px;background:rgba(255,255,255,.55);border-radius:12px}
+  .result-line b{color:var(--gold)}
+  .upload-zone{
+    border:1.5px dashed rgba(183,121,31,.5);border-radius:14px;padding:22px 12px;text-align:center;
+    cursor:pointer;color:var(--ink2);font-size:.88rem;background:rgba(255,255,255,.35);
+  }
+  .upload-zone b{color:var(--gold)}
+  canvas.stage{width:100%;border-radius:14px;display:block;background:#222;max-height:60vh;object-fit:contain}
+  .cam-row{display:flex;gap:10px;overflow-x:auto;padding:12px 2px 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .cam-row::-webkit-scrollbar{display:none}
+  .cam-card{
+    flex:0 0 86px;text-align:center;cursor:pointer;border-radius:14px;padding:8px 6px 6px;
+    background:rgba(255,255,255,.5);border:1.5px solid transparent;
+  }
+  .cam-card.on{border-color:var(--gold);background:var(--gold-soft)}
+  .cam-card svg{width:64px;height:44px;display:block;margin:0 auto}
+  .cam-card .nm{font-size:.72rem;margin-top:4px;line-height:1.3;font-weight:600}
+  .cam-card .en{font-size:.62rem;color:var(--ink3)}
+  .grid-pills{margin-top:10px}
+
+  /* ---- my view ---- */
+  .about-card{padding:18px 16px;margin-top:12px;line-height:1.8;font-size:.9rem}
+  .about-card h3{font-size:1rem;margin-bottom:6px}
+  .about-card ul{padding-left:1.2em;color:var(--ink2);font-size:.85rem}
+  .about-card li{margin:4px 0}
+
+  /* ---- bottom nav ---- */
+  .bottom-nav{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:10;
+    width:100%;max-width:640px;
+    background:rgba(255,255,255,.72);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+    border-top:1px solid rgba(255,255,255,.7);
+    box-shadow:0 -6px 20px rgba(120,100,70,.10);
+    display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+  }
+  .nav-item{flex:1;text-align:center;font-size:.68rem;color:var(--ink2);cursor:pointer;padding:4px 0 2px;border-radius:12px}
+  .nav-item svg{width:24px;height:24px;display:block;margin:0 auto 2px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .nav-item.on{color:var(--gold);font-weight:700}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+<div class="app">
+  <header>
+    <h1>追光<span>相机</span></h1>
+    <div class="ver">v2 原型 · LifeHack</div>
+  </header>
+
+  <main>
+    <!-- ============ 相机（v2：全屏原生相机样式） ============ -->
+    <section id="view-camera" class="view active">
+      <div class="cam-screen">
+        <video id="camVideo" playsinline muted autoplay></video>
+
+        <!-- 顶部图标行 -->
+        <div class="cam-topbar">
+          <div class="t-left">
+            <button class="cam-icon-btn hidden" id="btnVoice" aria-label="语音控制" title="语音控制">
+              <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
+            </button>
+            <span class="nr-badge hidden" id="nrBadge">降噪已开</span>
+          </div>
+          <div class="t-right">
+            <button class="cam-chip" id="btnBuffer">预录 30s</button>
+            <button class="cam-icon-btn" id="btnMore" aria-label="更多" title="更多">
+              <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="voice-note hidden" id="voiceNote">语音识别需联网，音频会发送到识别服务 · 说“开始录像 / 停止录像 / 拍照”</div>
+
+        <!-- 缓存 / 录制状态 -->
+        <div class="vf-overlay hidden" id="bufferBadge"><span class="vf-dot"></span><span id="bufferText">正在缓存 0 秒</span></div>
+        <div class="rec-timer-chip hidden" id="recTimerChip">00:00</div>
+        <div class="voice-indicator hidden" id="voiceIndicator"><span class="mic-dot"></span>正在听…</div>
+        <div class="cam-toast hidden" id="camToast"></div>
+
+        <!-- 未开相机时的占位 -->
+        <div class="vf-empty" id="camEmpty">
+          <div class="big">📷</div>
+          <div>打开相机，开始预录制<br><span class="hint" style="color:#999">按下录制前的一段画面也会被保存下来</span></div>
+          <button class="btn" id="btnStartCam">打开相机</button>
+          <div class="hint" style="color:#999">仅在本地使用摄像头，不上传任何画面</div>
+        </div>
+
+        <div class="glass err-box hidden" id="camError" style="padding:14px 16px"></div>
+
+        <!-- 焦段选择胶囊 -->
+        <div class="focal-pill" id="focalPill">
+          <button data-focal="15">15</button>
+          <button data-focal="24" class="on">24<small>mm</small></button>
+          <button data-focal="50">50</button>
+          <button data-focal="85">85</button>
+          <button data-focal="250">250</button>
+        </div>
+        <div class="focal-note" id="focalNote"></div>
+
+        <!-- 底部模式栏 -->
+        <div class="mode-tabs" id="modeTabs">
+          <button data-mode="prerecord" class="on">预录</button>
+          <button data-mode="photo">拍照</button>
+          <button data-mode="video">录像</button>
+          <button data-mode="portrait">人像</button>
+          <button data-mode="landscape">风光</button>
+        </div>
+
+        <!-- 底部快门行 -->
+        <div class="cam-bottom">
+          <div class="thumb" id="lastThumb" title="上一张拍摄"><span>暂无</span></div>
+          <button class="shutter" id="shutterBtn" aria-label="拍摄"><span class="sh-icon"></span></button>
+          <button class="cam-icon-btn flip-btn" id="btnFlip" aria-label="切换前后摄像头" title="切换前后摄像头">
+            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+          </button>
+        </div>
+
+        <!-- 更多面板：光线 / 工具 / 我的 -->
+        <div class="more-sheet hidden" id="moreSheet">
+          <div class="ms-title">追光相机</div>
+          <div class="ms-grid">
+            <div class="ms-item" data-goto="light">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+              <div class="nm">光线</div><div class="ds">黄金时刻 · 月相</div>
+            </div>
+            <div class="ms-item" data-goto="tools">
+              <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4.5 4.5 0 0 0-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 0 0 6-6L14 13l-3-3 3.7-3.7z"/></svg>
+              <div class="nm">工具</div><div class="ds">风格模拟 · 计算器</div>
+            </div>
+            <div class="ms-item" data-goto="my">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+              <div class="nm">我的</div><div class="ds">关于 · 隐私</div>
+            </div>
+          </div>
+          <p style="text-align:center;font-size:.72rem;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6">人像 / 风光模式的滤镜为实时预览，仅供取景参考；<br>录制与拍摄保存的是原始画面。</p>
+          <button class="ms-close" id="btnMoreClose">关闭</button>
+        </div>
+
+        <!-- 拍摄结果面板 -->
+        <div class="result-sheet hidden" id="camResult">
+          <video id="resultVideo" controls playsinline class="hidden"></video>
+          <img id="resultImg" class="preview hidden" alt="拍摄的照片">
+          <div class="result-actions">
+            <a class="btn small" id="btnDownload" href="#" download>下载</a>
+            <button class="btn small ghost" id="btnAgain" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)">继续拍摄</button>
+          </div>
+          <p class="rs-note" id="resultNote"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 光线 ============ -->
+    <section id="view-light" class="view">
+      <div class="glass loc-row">
+        <button class="btn small ghost" id="btnGeo">📍 使用我的位置</button>
+        <select id="citySel" aria-label="选择城市"></select>
+        <input type="date" id="dateInput" aria-label="选择日期">
+      </div>
+      <div class="glass loc-row" id="customLoc" style="margin-top:10px">
+        <div class="fld" style="flex:1;min-width:120px"><label>纬度</label><input type="number" id="latInput" step="0.01" value="32.0"></div>
+        <div class="fld" style="flex:1;min-width:120px"><label>经度</label><input type="number" id="lngInput" step="0.01" value="120.86"></div>
+        <button class="btn small" id="btnApplyLoc">应用</button>
+      </div>
+      <p class="hint" style="margin:8px 4px 0" id="locNote">默认位置：南通（32.0, 120.86）。使用“我的位置”需授权定位，位置只在本地使用。</p>
+
+      <div class="glass count-card">
+        <div class="sub" id="countLabel">距离下一个黄金时刻</div>
+        <div class="big" id="countValue">—</div>
+        <div class="sub" id="countDetail"></div>
+      </div>
+
+      <div class="section-title">今日太阳时刻</div>
+      <div class="glass kv-list" id="sunList"></div>
+
+      <div class="glass moon-card">
+        <div class="moon-ico" id="moonIcon">🌔</div>
+        <div class="moon-info">
+          <div class="name" id="moonName">—</div>
+          <div class="d" id="moonDetail">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 工具 ============ -->
+    <section id="view-tools" class="view">
+      <!-- 厂商风格模拟（核心） -->
+      <div class="glass tool-card featured open" id="toolStyle">
+        <div class="t-head"><div><div class="t-name">厂商风格模拟</div><div class="t-desc">上传照片，一键换上各家相机的色彩风格</div></div><div class="t-arrow">›</div></div>
+        <div class="tool-body">
+          <div class="upload-zone" id="styleUpload">点这里上传照片<br><b>只在本地处理，不上传</b><input type="file" id="styleFile" accept="image/*" class="hidden"></div>
+          <canvas class="stage hidden" id="styleCanvas" style="margin-top:12px"></canvas>
+          <div class="cam-row" id="styleRow"></div>
+          <p class="warn" style="margin-top:8px">风格为模拟近似，非厂商官方色彩科学。</p>
+          <div class="result-actions">
+            <button class="btn small hidden" id="btnStyleDownload">下载图片</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 景深计算器 -->
+      <div class="glass tool-card" id="toolDof">
+        <div class="t-head"><div><div class="t-name">景深计算器</div><div class="t-desc">焦段、光圈、距离、画幅 → 前后景深与超焦距</div></div><div class="t-arrow">›</div></div>
+        <div class="tool-body">
+          <div class="form-row">
+            <div class="fld"><label>焦距 (mm)</label><input type="number" id="dofFocal" value="50" min="1" step="1"></div>
+            <div class="fld"><label>光圈 (f)</label><input type="number" id="dofAperture" value="1.8" min="0.5" step="0.1"></div>
+          </div>
+          <div class="form-row">
+            <div class="fld"><label>拍摄距离 (m)</label><input type="number" id="dofDist" value="2" min="0.01" step="0.1"></div>
+            <div class="fld"><label>画幅</label>
+              <select id="dofSensor">
+                <option value="0.03">全画幅</option>
+                <option value="0.02">APS-C</option>
+                <option value="0.015">M4/3</option>
+                <option value="0.011">1 英寸</option>
+                <option value="0.005">手机</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn small" id="btnDof">计算</button>
+          <div class="result-line hidden" id="dofResult" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+      <!-- 曝光计算器 -->
+      <div class="glass tool-card" id="toolExp">
+        <div class="t-head"><div><div class="t-name">曝光计算器</div><div class="t-desc">等效曝光组合 · ND 镜长曝光 · 晴天 f/16</div></div><div class="t-arrow">›</div></div>
+        <div class="tool-body">
+          <div class="form-row">
+            <div class="fld"><label>ISO</label>
+              <select id="expIso"><option>50</option><option selected>100</option><option>200</option><option>400</option><option>800</option><option>1600</option><option>3200</option></select>
+            </div>
+            <div class="fld"><label>光圈 (f)</label>
+              <select id="expAperture"><option>1.4</option><option>1.8</option><option>2.8</option><option>4</option><option>5.6</option><option selected>8</option><option>11</option><option>16</option></select>
+            </div>
+            <div class="fld"><label>快门</label>
+              <select id="expShutter">
+                <option value="30">30s</option><option value="15">15s</option><option value="8">8s</option><option value="4">4s</option>
+                <option value="2">2s</option><option value="1">1s</option><option value="0.5">1/2s</option><option value="0.25">1/4s</option>
+                <option value="0.125">1/8s</option><option value="0.0666667">1/15s</option><option value="0.0333333">1/30s</option>
+                <option value="0.0166667">1/60s</option><option value="0.008" selected>1/125s</option><option value="0.004">1/250s</option>
+                <option value="0.002">1/500s</option><option value="0.001">1/1000s</option><option value="0.0005">1/2000s</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn small" id="btnExp">计算等效组合</button>
+          <div class="result-line hidden" id="expResult" style="margin-top:10px"></div>
+          <div class="section-title" style="margin-left:0">ND 镜长曝光</div>
+          <div class="form-row">
+            <div class="fld"><label>不加 ND 的快门 (秒)</label><input type="number" id="ndBase" value="0.0166667" step="any" min="0"></div>
+            <div class="fld"><label>ND 档数</label>
+              <select id="ndStops"><option value="1">ND2 · 1 档</option><option value="2">ND4 · 2 档</option><option value="3">ND8 · 3 档</option><option value="6">ND64 · 6 档</option><option value="10" selected>ND1000 · 10 档</option></select>
+            </div>
+          </div>
+          <button class="btn small" id="btnNd">计算长曝光时间</button>
+          <div class="result-line hidden" id="ndResult" style="margin-top:10px"></div>
+          <p class="hint" style="margin-top:12px">晴天 f/16 法则：晴天阳光下，光圈 f/16，快门 ≈ 1/ISO 秒（ISO 100 用 1/100s）。</p>
+        </div>
+      </div>
+
+      <!-- 构图检查 -->
+      <div class="glass tool-card" id="toolComp">
+        <div class="t-head"><div><div class="t-name">构图检查</div><div class="t-desc">上传照片，叠加三分法 / 黄金比例 / 对角线</div></div><div class="t-arrow">›</div></div>
+        <div class="tool-body">
+          <div class="upload-zone" id="compUpload">点这里上传照片<br><b>只在本地处理，不上传</b><input type="file" id="compFile" accept="image/*" class="hidden"></div>
+          <canvas class="stage hidden" id="compCanvas" style="margin-top:12px"></canvas>
+          <div class="pills grid-pills" id="gridPills">
+            <button class="pill on" data-grid="thirds">三分法</button>
+            <button class="pill" data-grid="golden">黄金比例</button>
+            <button class="pill" data-grid="diag">对角线</button>
+            <button class="pill" data-grid="none">无网格</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 我的 ============ -->
+    <section id="view-my" class="view">
+      <div class="glass about-card">
+        <h3>关于追光相机</h3>
+        <p>一款为摄影爱好者做的网页相机：<b>预录制</b>帮你留住按下快门前的瞬间，<b>厂商风格模拟</b>让照片换上各家相机的色彩味道，<b>光线与计算工具</b>帮你算好每一次出片。</p>
+        <p style="margin-top:10px">🔒 <b>隐私：</b>所有处理均在本地完成，照片、视频与位置不会上传到任何服务器。</p>
+      </div>
+      <div class="glass about-card">
+        <h3>v2 新增</h3>
+        <ul>
+          <li>原生相机式全屏取景：焦段选择、模式栏、快门行</li>
+          <li>拍照模式：实时画面快照保存为 JPG</li>
+          <li>语音控制：说“开始录像 / 停止录像 / 拍照”即可操作（需联网识别）</li>
+          <li>降噪：录制音频开启浏览器内置降噪、回声消除</li>
+        </ul>
+      </div>
+      <div class="glass about-card">
+        <h3>后续计划（暂未实现）</h3>
+        <ul>
+          <li>录制文件内置 MP4 转换（WebM → MP4）</li>
+          <li>拍摄日志：记录每次拍摄的参数与地点</li>
+          <li>星空助手：银河可见时间与最佳拍摄窗口</li>
+          <li>直方图与照片取色配色</li>
+          <li>AI 摄影助手：按场景推荐拍摄参数</li>
+        </ul>
+      </div>
+      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v2 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-item on" data-view="camera">
+      <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      相机
+    </div>
+    <div class="nav-item" data-view="light">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+      光线
+    </div>
+    <div class="nav-item" data-view="tools">
+      <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4.5 4.5 0 0 0-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 0 0 6-6L14 13l-3-3 3.7-3.7z"/></svg>
+      工具
+    </div>
+    <div class="nav-item" data-view="my">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      我的
+    </div>
+  </nav>
+</div>
+
+<script>
+'use strict';
+/*__MATH_START__*/
+/* ================= 纯计算函数（无 DOM 依赖，可独立测试） ================= */
+const RAD = Math.PI / 180;
+const J2000 = 2451545;
+
+function toJulian(date){ return date.valueOf() / 86400000 + 2440587.5; }
+function fromJulian(j){ return new Date((j - 2440587.5) * 86400000); }
+function toDays(date){ return toJulian(date) - J2000; }
+
+/* ---- 太阳位置（SunCalc 算法） ---- */
+function solarMeanAnomaly(d){ return RAD * (357.5291 + 0.98560028 * d); }
+function eclipticLongitude(M){
+  const C = RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+  const P = RAD * 102.9372;
+  return M + C + P + Math.PI;
+}
+function declination(l){ return Math.asin(Math.sin(l) * Math.sin(RAD * 23.4397)); }
+function rightAscension(l){ return Math.atan2(Math.sin(l) * Math.cos(RAD * 23.4397), Math.cos(l)); }
+function siderealTime(d, lw){ return RAD * (280.16 + 360.9856235 * d) - lw; }
+function hourAngle(h, phi, dec){
+  const cosH = (Math.sin(h) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec));
+  if (cosH > 1 || cosH < -1) return NaN; // 太阳在这一天到不了该高度
+  return Math.acos(cosH);
+}
+function julianCycle(d, lw){ return Math.round(d - J2000 - lw / (2 * Math.PI)); }
+function approxTransit(Ht, lw, n){ return J2000 + (Ht + lw) / (2 * Math.PI) + n; }
+function solarTransitJ(ds, M, L){ return J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L); }
+
+/* 返回某地某日的太阳时刻（本地时间）。无法计算的项为 null，绝不编造。 */
+function getSunTimes(date, lat, lng){
+  const lw = RAD * -lng, phi = RAD * lat;
+  const d = toDays(date);
+  const n = julianCycle(d, lw);
+  const ds = approxTransit(0, lw, n);
+  const M = solarMeanAnomaly(ds);
+  const L = eclipticLongitude(M);
+  const dec = declination(L);
+  const Jnoon = solarTransitJ(ds, M, L);
+  function at(altDeg, isRise){
+    const w = hourAngle(RAD * altDeg, phi, dec);
+    if (isNaN(w)) return null;
+    const a = approxTransit(isRise ? -w : w, lw, n);
+    return fromJulian(solarTransitJ(a, M, L));
+  }
+  return {
+    solarNoon: fromJulian(Jnoon),
+    sunrise: at(-0.833, true),
+    sunset: at(-0.833, false),
+    goldenAmStart: at(-0.833, true),   // 黄金时刻上午：日出 → 太阳升至 6°
+    goldenAmEnd: at(6, true),
+    goldenPmStart: at(6, false),       // 黄金时刻下午：太阳降至 6° → 日落
+    goldenPmEnd: at(-0.833, false),
+    blueAmStart: at(-6, true),         // 蓝调时刻上午：太阳 -6° → -4°
+    blueAmEnd: at(-4, true),
+    bluePmStart: at(-4, false),        // 蓝调时刻下午：太阳 -4° → -6°
+    bluePmEnd: at(-6, false)
+  };
+}
+
+/* 当前太阳高度角与方位角（方位角为罗盘角：0=北，90=东） */
+function sunPosition(date, lat, lng){
+  const lw = RAD * -lng, phi = RAD * lat;
+  const d = toDays(date);
+  const M = solarMeanAnomaly(d);
+  const L = eclipticLongitude(M);
+  const dec = declination(L);
+  const H = siderealTime(d, lw) - rightAscension(L);
+  const alt = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H));
+  let az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
+  az = (az / RAD + 180 + 360) % 360; // 转罗盘角
+  return { altitude: alt / RAD, azimuth: az };
+}
+
+/* ---- 月相（朔望月 29.530588853 天；已知新月 2000-01-06 18:14 UTC） ---- */
+function moonPhase(date){
+  const synodic = 29.530588853;
+  const knownNewJD = 2451550.26; // 2000-01-06 18:14 UTC
+  let age = (toJulian(date) - knownNewJD) % synodic;
+  if (age < 0) age += synodic;
+  const illumination = (1 - Math.cos(2 * Math.PI * age / synodic)) / 2;
+  // 8 个月相：四个关键瞬间（朔/上弦/望/下弦）各占 ±0.92 天窗口，其余为过渡月相
+  const seg = 29.530588853 / 8; // ≈3.69 天
+  const names = ['新月', '娥眉月', '上弦月', '盈凸月', '满月', '亏凸月', '下弦月', '残月'];
+  const idx = Math.floor(((age / synodic) * 8 + 0.5) % 8);
+  return { age: age, illumination: illumination, name: names[idx], seg: seg };
+}
+
+/* ---- 景深（薄透镜公式；f 单位 mm，距离单位 m，弥散圆单位 mm） ---- */
+function calcDOF(focalMm, aperture, distM, cocMm){
+  const f = focalMm;
+  const s = distM * 1000; // 转 mm
+  const H = (f * f) / (aperture * cocMm) + f; // 超焦距 mm
+  if (s <= f) return null; // 距离小于焦距，无意义
+  const near = (s * (H - f)) / (H + s - 2 * f);
+  let far = Infinity;
+  if (s < H) far = (s * (H - f)) / (H - s);
+  const total = far === Infinity ? Infinity : far - near;
+  return {
+    hyperfocalM: H / 1000,
+    nearM: near / 1000,
+    farM: far === Infinity ? Infinity : far / 1000,
+    totalM: total === Infinity ? Infinity : total / 1000
+  };
+}
+
+/* ---- 曝光 ---- */
+function calcEV(aperture, shutterSec, iso){
+  // EV100 = log2(N²/t) - log2(ISO/100)
+  return Math.log2((aperture * aperture) / shutterSec) - Math.log2(iso / 100);
+}
+/* 给定 EV（ISO 100 下）与 ISO，返回一组等效光圈/快门组合 */
+function equivalentCombos(ev100, iso){
+  const apertures = [1.4, 1.8, 2.8, 4, 5.6, 8, 11, 16];
+  const out = [];
+  for (const N of apertures){
+    // t = N² / (2^EV * ISO/100)
+    const t = (N * N) / (Math.pow(2, ev100) * (iso / 100));
+    if (t >= 0.00025 && t <= 60) out.push({ aperture: N, shutter: t });
+  }
+  return out;
+}
+function ndTime(baseSec, stops){ return baseSec * Math.pow(2, stops); }
+
+/* ---- 格式化 ---- */
+function fmtTime(d){
+  if (!d) return '无法计算';
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return h + ':' + m;
+}
+function fmtShutter(t){
+  if (!isFinite(t) || t <= 0) return '无法计算';
+  if (t >= 60){
+    const min = Math.floor(t / 60), sec = Math.round(t % 60);
+    return min + '分' + (sec ? sec + '秒' : '');
+  }
+  if (t >= 1) return (Math.round(t * 10) / 10) + '秒';
+  return '1/' + Math.round(1 / t) + 's';
+}
+function fmtMeters(m){
+  if (!isFinite(m)) return '∞';
+  if (m < 0.01) return (m * 1000).toFixed(0) + ' mm';
+  if (m < 1) return (m * 100).toFixed(1) + ' cm';
+  if (m < 10) return m.toFixed(2) + ' m';
+  return m.toFixed(1) + ' m';
+}
+/*__MATH_END__*/
+
+/* ================= 预录制相机（v2：原生相机式） ================= */
+const camVideo = document.getElementById('camVideo');
+const camEmpty = document.getElementById('camEmpty');
+const btnStartCam = document.getElementById('btnStartCam');
+const camError = document.getElementById('camError');
+const bufferBadge = document.getElementById('bufferBadge');
+const bufferText = document.getElementById('bufferText');
+const recTimerChip = document.getElementById('recTimerChip');
+const shutterBtn = document.getElementById('shutterBtn');
+const camResult = document.getElementById('camResult');
+const resultVideo = document.getElementById('resultVideo');
+const resultImg = document.getElementById('resultImg');
+const btnDownload = document.getElementById('btnDownload');
+const btnAgain = document.getElementById('btnAgain');
+const resultNote = document.getElementById('resultNote');
+const lastThumb = document.getElementById('lastThumb');
+const btnFlip = document.getElementById('btnFlip');
+const btnBuffer = document.getElementById('btnBuffer');
+const btnMore = document.getElementById('btnMore');
+const moreSheet = document.getElementById('moreSheet');
+const btnMoreClose = document.getElementById('btnMoreClose');
+const btnVoice = document.getElementById('btnVoice');
+const voiceNote = document.getElementById('voiceNote');
+const voiceIndicator = document.getElementById('voiceIndicator');
+const nrBadge = document.getElementById('nrBadge');
+const focalNote = document.getElementById('focalNote');
+const camToast = document.getElementById('camToast');
+
+let camStream = null, camRecorder = null;
+let bufferSecs = 30;
+const BUFFER_OPTIONS = [15, 30, 60];
+let headerChunk = null;
+let ringChunks = [];
+let savedChunks = [];
+let isRecording = false;
+let expectFinish = false;
+let recStartTime = 0, recTimerId = null, bufTimerId = null;
+let camMime = '';
+let camReady = false;
+let curMode = 'prerecord'; // prerecord | photo | video | portrait | landscape
+let facing = 'environment';
+let audioOn = false;
+let zoomCap = null;
+let curFocal = 24;
+let curZoom = 1;
+let hasResult = false;
+
+const LIVE_FILTERS = {
+  none: 'none',
+  portrait: 'saturate(1.12) contrast(1.04) sepia(0.10) brightness(1.02)',
+  landscape: 'saturate(1.35) contrast(1.10) brightness(1.0)',
+  film: 'sepia(0.28) contrast(0.94) saturate(0.82) brightness(1.03)'
+};
+const MODE_FILTER = { prerecord: 'none', photo: 'none', video: 'none', portrait: 'portrait', landscape: 'landscape' };
+const MODE_NAME = { prerecord: '预录', photo: '拍照', video: '录像', portrait: '人像', landscape: '风光' };
+
+let toastTimer = null;
+function showToast(msg){
+  camToast.textContent = msg;
+  camToast.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => camToast.classList.add('hidden'), 2600);
+}
+
+function pickMime(){
+  const cands = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm'
+  ];
+  for (const c of cands){
+    try { if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c; } catch (e) {}
+  }
+  return '';
+}
+
+function showCamError(html){
+  camError.innerHTML = html;
+  camError.classList.remove('hidden');
+}
+
+function showCameraErrorByName(e){
+  if (e.name === 'NotAllowedError' || e.name === 'SecurityError'){
+    showCamError('<b>未获得摄像头权限。</b><br>请在浏览器地址栏旁的权限设置中允许摄像头访问，然后重试。画面只在本地使用，不会上传。');
+  } else if (e.name === 'NotFoundError' || e.name === 'OverconstrainedError'){
+    showCamError('<b>没有找到可用的摄像头。</b><br>请确认设备有摄像头且未被其他应用占用。');
+  } else {
+    showCamError('<b>无法打开摄像头：</b>' + (e.message || e.name));
+  }
+}
+
+function fileStamp(kind){
+  const now = new Date();
+  return '追光相机' + kind + '_' + now.getFullYear()
+    + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0')
+    + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0')
+    + String(now.getSeconds()).padStart(2, '0');
+}
+
+function fmtTimer(ms){
+  const s = Math.floor(ms / 1000);
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+
+async function startCamera(){
+  camError.classList.add('hidden');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showCamError('<b>当前浏览器不支持调用摄像头。</b><br>请使用新版 Chrome / Safari / Edge 打开本页面。');
+    return;
+  }
+  if (!window.MediaRecorder){
+    showCamError('<b>当前浏览器不支持录制功能（缺少 MediaRecorder）。</b><br>请使用新版 Chrome / Safari / Edge 打开本页面。');
+    return;
+  }
+  const videoConstraints = { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } };
+  const audioConstraints = { noiseSuppression: true, echoCancellation: true, autoGainControl: true };
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: audioConstraints });
+    audioOn = true;
+  } catch (e) {
+    // 麦克风被拒时退回纯视频，避免整个摄像头打不开
+    if (e.name === 'NotAllowedError' || e.name === 'SecurityError' || e.name === 'NotFoundError'){
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+        audioOn = false;
+      } catch (e2) {
+        showCameraErrorByName(e2);
+        return;
+      }
+    } else {
+      showCamError('<b>无法打开摄像头：</b>' + (e.message || e.name));
+      return;
+    }
+  }
+  camVideo.srcObject = camStream;
+  applyVideoTransform();
+  try { await camVideo.play(); } catch (e) {}
+  camEmpty.classList.add('hidden');
+  camReady = true;
+  // 降噪指示：仅当音频轨实际报告 noiseSuppression 开启时显示
+  const aTracks = camStream.getAudioTracks();
+  if (aTracks.length){
+    let ns = false;
+    try { ns = !!aTracks[0].getSettings().noiseSuppression; } catch (e) {}
+    nrBadge.classList.toggle('hidden', !ns);
+  } else {
+    nrBadge.classList.add('hidden');
+    if (!audioOn) showToast('未获得麦克风权限，录制无声');
+  }
+  detectZoom();
+  startBuffering();
+}
+
+function stopCameraTracks(){
+  clearInterval(bufTimerId);
+  expectFinish = false;
+  try { if (camRecorder && camRecorder.state !== 'inactive') camRecorder.stop(); } catch (e) {}
+  camRecorder = null;
+  if (camStream){
+    camStream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+    camStream = null;
+  }
+  ringChunks = []; savedChunks = []; headerChunk = null;
+  curZoom = 1;
+  bufferBadge.classList.add('hidden');
+  nrBadge.classList.add('hidden');
+  applyVideoTransform();
+}
+
+async function flipCamera(){
+  if (isRecording){ showToast('录制中无法切换摄像头'); return; }
+  if (!camReady){ showToast('请先打开相机'); return; }
+  facing = facing === 'environment' ? 'user' : 'environment';
+  stopCameraTracks();
+  camReady = false;
+  camVideo.srcObject = null;
+  await startCamera();
+  showToast(facing === 'user' ? '已切换前置摄像头' : '已切换后置摄像头');
+}
+
+/* ---- 焦段 / 变焦 ---- */
+function detectZoom(){
+  zoomCap = null;
+  try {
+    const vTrack = camStream.getVideoTracks()[0];
+    if (vTrack && vTrack.getCapabilities){
+      const caps = vTrack.getCapabilities();
+      if (caps.zoom && typeof caps.zoom.max === 'number'){
+        zoomCap = { min: caps.zoom.min || 1, max: caps.zoom.max, step: caps.zoom.step || 0.1 };
+      }
+    }
+  } catch (e) {}
+  applyFocal(curFocal);
+}
+
+function applyVideoTransform(){
+  const mirror = facing === 'user' ? 'scaleX(-1) ' : '';
+  const scale = (!zoomCap && curZoom > 1) ? 'scale(' + curZoom + ')' : '';
+  camVideo.style.transform = (mirror + scale).trim();
+}
+
+function applyFocal(focal){
+  curFocal = focal;
+  document.querySelectorAll('#focalPill button').forEach(b => b.classList.toggle('on', parseInt(b.dataset.focal, 10) === focal));
+  if (!camReady){ updateFocalNote(); return; }
+  const want = focal / 24;
+  if (zoomCap){
+    const z = Math.min(zoomCap.max, Math.max(zoomCap.min, want));
+    const vTrack = camStream.getVideoTracks()[0];
+    try {
+      const p = vTrack.applyConstraints({ advanced: [{ zoom: z }] });
+      if (p && p.then){
+        p.then(() => { curZoom = z; applyVideoTransform(); updateFocalNote(); })
+         .catch(() => applyDigitalZoom(want));
+      } else {
+        curZoom = z; applyVideoTransform(); updateFocalNote();
+      }
+    } catch (e) { applyDigitalZoom(want); }
+  } else {
+    applyDigitalZoom(want);
+  }
+}
+
+function applyDigitalZoom(want){
+  // 数码变焦：仅放大预览（CSS），录制的视频文件不受影响；拍照快照按同样倍率裁切
+  curZoom = Math.min(10, Math.max(1, want));
+  applyVideoTransform();
+  updateFocalNote();
+}
+
+function updateFocalNote(){
+  if (!camReady){ focalNote.textContent = ''; return; }
+  const want = curFocal / 24;
+  if (want < 1 && curZoom >= 1){
+    focalNote.textContent = '15mm 需超广角镜头，当前设备不支持，已用最广视角';
+    return;
+  }
+  if (zoomCap){
+    focalNote.textContent = '光学变焦 · 约 ' + curZoom.toFixed(1) + '×';
+  } else if (curZoom > 1){
+    focalNote.textContent = '数码变焦约 ' + curZoom.toFixed(1) + '× · 仅影响预览与拍照，录制视频为原始画面';
+  } else {
+    focalNote.textContent = '';
+  }
+}
+
+/* ---- 模式切换 ---- */
+function setMode(mode){
+  if (isRecording){ showToast('录制中无法切换模式'); return; }
+  curMode = mode;
+  document.querySelectorAll('#modeTabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  shutterBtn.classList.toggle('photo-mode', mode === 'photo');
+  const f = MODE_FILTER[mode] || 'none';
+  camVideo.style.filter = LIVE_FILTERS[f] || 'none';
+  if (mode === 'prerecord') showToast('预录模式：录制含前 ' + bufferSecs + ' 秒');
+  else if (mode === 'photo') showToast('拍照模式：点快门保存照片');
+  else if (mode === 'video') showToast('录像模式：不含预录制片段');
+  else if (mode === 'portrait') showToast('人像模式：预览应用人像风格');
+  else if (mode === 'landscape') showToast('风光模式：预览应用风光风格');
+  updateBufferUI();
+}
+
+/* ---- 预录制缓存与录制 ---- */
+function startBuffering(){
+  clearInterval(bufTimerId);
+  camMime = pickMime();
+  ringChunks = []; savedChunks = []; headerChunk = null;
+  try {
+    camRecorder = new MediaRecorder(camStream, {
+      mimeType: camMime || undefined,
+      videoBitsPerSecond: 8000000
+    });
+  } catch (e) {
+    showCamError('<b>录制器初始化失败：</b>' + (e.message || e.name));
+    return;
+  }
+  let first = true;
+  camRecorder.ondataavailable = (ev) => {
+    if (!ev.data || ev.data.size === 0) return;
+    if (first){
+      // 第一个数据块含容器头：单独保存，组装时放在最前面
+      headerChunk = ev.data;
+      first = false;
+      return;
+    }
+    const item = { t: Date.now(), blob: ev.data };
+    ringChunks.push(item);
+    if (isRecording) savedChunks.push(item);
+    trimRing();
+  };
+  camRecorder.onstop = () => {
+    // 只有正常停止录制时才组装文件；切换摄像头时停止录制器不产生文件
+    if (expectFinish){ expectFinish = false; finishRecording(); }
+  };
+  camRecorder.start(1000); // 每 1 秒一个数据块
+  // 立即 flush 一次，尽快拿到容器头（该块几乎不含画面内容）
+  setTimeout(() => { try { camRecorder.requestData(); } catch (e) {} }, 120);
+  bufTimerId = setInterval(updateBufferUI, 500);
+  updateBufferUI();
+}
+
+function trimRing(){
+  const cutoff = Date.now() - bufferSecs * 1000;
+  while (ringChunks.length && ringChunks[0].t < cutoff) ringChunks.shift();
+}
+
+function updateBufferUI(){
+  trimRing();
+  const show = camReady && (curMode === 'prerecord' || curMode === 'portrait' || curMode === 'landscape');
+  bufferBadge.classList.toggle('hidden', !show);
+  if (show) bufferText.textContent = '正在缓存 ' + ringChunks.length + ' 秒';
+}
+
+function onShutter(){
+  if (!camReady){ showToast('请先打开相机'); return; }
+  if (curMode === 'photo'){ takePhoto(); return; }
+  toggleRecord();
+}
+
+function toggleRecord(){
+  if (!camReady || !camRecorder) return;
+  if (!isRecording){
+    isRecording = true;
+    // 预录模式（含人像/风光风格模式）带预录制片段；纯录像模式不带
+    savedChunks = (curMode === 'video') ? [] : ringChunks.slice();
+    recStartTime = Date.now();
+    shutterBtn.classList.add('recording');
+    recTimerChip.classList.remove('hidden');
+    recTimerChip.textContent = '00:00';
+    camResult.classList.add('hidden');
+    recTimerId = setInterval(() => { recTimerChip.textContent = fmtTimer(Date.now() - recStartTime); }, 500);
+    showToast(curMode === 'video' ? '开始录像' : '开始录像（含 ' + savedChunks.length + ' 秒预录制）');
+  } else {
+    stopRecording();
+  }
+}
+
+function stopRecording(){
+  if (!isRecording) return;
+  isRecording = false;
+  clearInterval(recTimerId);
+  shutterBtn.classList.remove('recording');
+  recTimerChip.classList.add('hidden');
+  showToast('正在处理…');
+  expectFinish = true;
+  try { camRecorder.stop(); } catch (e) { expectFinish = false; finishRecording(); }
+}
+
+function finishRecording(){
+  const parts = [];
+  if (headerChunk) parts.push(headerChunk);
+  for (const c of savedChunks) parts.push(c.blob);
+  if (parts.length <= 1){
+    showToast('没有录到有效画面，请重试');
+    recTimerChip.textContent = '00:00';
+    restartBuffering();
+    return;
+  }
+  const type = camMime || 'video/webm';
+  const blob = new Blob(parts, { type: type });
+  const url = URL.createObjectURL(blob);
+  const ext = type.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+  const fname = fileStamp('视频') + '.' + ext;
+  resultImg.classList.add('hidden');
+  resultVideo.classList.remove('hidden');
+  resultVideo.src = url;
+  btnDownload.href = url;
+  btnDownload.download = fname;
+  btnDownload.textContent = '下载视频 (.' + ext + ')';
+  const totalSec = savedChunks.length;
+  const styleTag = (curMode === 'portrait' || curMode === 'landscape') ? MODE_NAME[curMode] + '预览风格 · ' : '';
+  resultNote.textContent = styleTag + '已保存约 ' + totalSec + ' 秒'
+    + (curMode === 'video' ? '（纯录像，不含预录制）' : '（含预录制）')
+    + (ext === 'webm' ? '。本浏览器录制为 WebM 格式；后续版本将内置 MP4 转换。' : '。已录制为 MP4 格式，可直接保存到相册。')
+    + (audioOn ? '' : '本次录制无声（未获得麦克风权限）。');
+  camResult.classList.remove('hidden');
+  hasResult = true;
+  setVideoThumb(resultVideo);
+  recTimerChip.textContent = '00:00';
+  restartBuffering();
+}
+
+function restartBuffering(){
+  // 录制结束后重新开始缓存（MediaRecorder 停止后不可复用，需新建）
+  if (!camStream) return;
+  try { startBuffering(); } catch (e) {}
+}
+
+/* ---- 拍照快照 ---- */
+function takePhoto(){
+  if (!camReady || camVideo.videoWidth === 0){ showToast('相机画面未就绪'); return; }
+  const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+  // 数码变焦时按同样倍率裁切中央区域，使照片与预览一致
+  let sw = vw, sh = vh, sx = 0, sy = 0;
+  if (!zoomCap && curZoom > 1){
+    sw = vw / curZoom; sh = vh / curZoom;
+    sx = (vw - sw) / 2; sy = (vh - sh) / 2;
+  }
+  const c = document.createElement('canvas');
+  c.width = Math.round(sw); c.height = Math.round(sh);
+  const ctx = c.getContext('2d');
+  if (facing === 'user'){
+    // 前置摄像头：照片左右翻转回正常方向
+    ctx.translate(c.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(camVideo, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  c.toBlob((blob) => {
+    if (!blob){ showToast('拍照失败，请重试'); return; }
+    const url = URL.createObjectURL(blob);
+    const fname = fileStamp('照片') + '.jpg';
+    resultVideo.classList.add('hidden');
+    resultImg.classList.remove('hidden');
+    resultImg.src = url;
+    btnDownload.href = url;
+    btnDownload.download = fname;
+    btnDownload.textContent = '下载照片 (.jpg)';
+    const styleTag = (curMode === 'portrait' || curMode === 'landscape') ? MODE_NAME[curMode] + '预览风格 · ' : '';
+    resultNote.textContent = styleTag + '照片已保存（' + c.width + '×' + c.height + '）。预览滤镜不影响保存的原始画面。';
+    camResult.classList.remove('hidden');
+    hasResult = true;
+    setThumbImg(url);
+  }, 'image/jpeg', 0.92);
+}
+
+/* ---- 缩略图 ---- */
+function setThumbImg(url){
+  lastThumb.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = '上一张拍摄';
+  lastThumb.appendChild(img);
+}
+function setVideoThumb(videoEl){
+  // 截取视频首帧作为缩略图
+  const grab = () => {
+    try {
+      if (!videoEl.videoWidth) return;
+      const c = document.createElement('canvas');
+      c.width = 104; c.height = 104;
+      const ctx = c.getContext('2d');
+      const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+      const side = Math.min(vw, vh);
+      ctx.drawImage(videoEl, (vw - side) / 2, (vh - side) / 2, side, side, 0, 0, 104, 104);
+      setThumbImg(c.toDataURL('image/jpeg', 0.7));
+    } catch (e) {}
+  };
+  if (videoEl.readyState >= 2) grab();
+  else videoEl.addEventListener('loadeddata', grab, { once: true });
+}
+
+/* ---- 语音控制（Web Speech API；不支持的浏览器不显示按钮） ---- */
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let voiceOn = false, voiceRec = null, voiceBlocked = false;
+let voiceRestarts = [], lastVoiceCmd = 0;
+
+if (SpeechRec){
+  btnVoice.classList.remove('hidden');
+}
+
+function startVoice(){
+  if (!SpeechRec || voiceOn) return;
+  try {
+    voiceRec = new SpeechRec();
+  } catch (e) {
+    showToast('语音识别初始化失败');
+    return;
+  }
+  voiceRec.lang = 'zh-CN';
+  voiceRec.continuous = true;
+  voiceRec.interimResults = true;
+  voiceOn = true;
+  voiceBlocked = false;
+  voiceRestarts = [];
+  btnVoice.classList.add('on');
+  voiceNote.classList.remove('hidden');
+  voiceIndicator.classList.remove('hidden');
+  voiceRec.onresult = (ev) => {
+    for (let i = ev.resultIndex; i < ev.results.length; i++){
+      const res = ev.results[i];
+      if (!res || !res[0]) continue;
+      handleVoiceCommand(res[0].transcript || '');
+    }
+  };
+  voiceRec.onerror = (ev) => {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed' || ev.error === 'audio-capture'){
+      voiceBlocked = true;
+      stopVoice();
+      showToast('无法使用麦克风进行语音识别，语音控制已关闭');
+    }
+    // network / no-speech 等临时错误：由 onend 重启
+  };
+  voiceRec.onend = () => {
+    if (!voiceOn || voiceBlocked) return;
+    const now = Date.now();
+    voiceRestarts = voiceRestarts.filter(t => now - t < 10000);
+    voiceRestarts.push(now);
+    if (voiceRestarts.length > 3){
+      stopVoice();
+      showToast('语音识别不稳定，已自动关闭');
+      return;
+    }
+    try { voiceRec.start(); } catch (e) { stopVoice(); }
+  };
+  try {
+    voiceRec.start();
+  } catch (e) {
+    stopVoice();
+    showToast('语音识别启动失败');
+  }
+}
+function stopVoice(){
+  voiceOn = false;
+  btnVoice.classList.remove('on');
+  voiceNote.classList.add('hidden');
+  voiceIndicator.classList.add('hidden');
+  if (voiceRec){
+    try { voiceRec.stop(); } catch (e) {}
+    voiceRec = null;
+  }
+}
+function handleVoiceCommand(text){
+  const now = Date.now();
+  if (now - lastVoiceCmd < 2000) return; // 同一句话的重复识别结果只执行一次
+  if (text.indexOf('开始录像') >= 0){
+    if (isRecording || !camReady) return;
+    if (curMode === 'photo') setMode('prerecord');
+    lastVoiceCmd = now;
+    showToast('收到：开始录像');
+    toggleRecord();
+  } else if (text.indexOf('停止录像') >= 0 || text.indexOf('结束录像') >= 0){
+    if (!isRecording) return;
+    lastVoiceCmd = now;
+    showToast('收到：停止录像');
+    stopRecording();
+  } else if (text.indexOf('拍照') >= 0){
+    if (!camReady || isRecording) return;
+    lastVoiceCmd = now;
+    showToast('收到：拍照');
+    takePhoto();
+  }
+}
+
+/* ---- 相机视图事件绑定 ---- */
+btnStartCam.addEventListener('click', startCamera);
+shutterBtn.addEventListener('click', onShutter);
+btnFlip.addEventListener('click', flipCamera);
+btnAgain.addEventListener('click', () => { camResult.classList.add('hidden'); });
+lastThumb.addEventListener('click', () => { if (hasResult) camResult.classList.remove('hidden'); });
+btnVoice.addEventListener('click', () => { voiceOn ? stopVoice() : startVoice(); });
+
+btnBuffer.addEventListener('click', () => {
+  const idx = BUFFER_OPTIONS.indexOf(bufferSecs);
+  bufferSecs = BUFFER_OPTIONS[(idx + 1) % BUFFER_OPTIONS.length];
+  btnBuffer.textContent = '预录 ' + bufferSecs + 's';
+  trimRing(); updateBufferUI();
+  showToast('预录制时长 ' + bufferSecs + ' 秒');
+});
+
+document.getElementById('modeTabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  setMode(b.dataset.mode);
+});
+
+document.getElementById('focalPill').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  applyFocal(parseInt(b.dataset.focal, 10));
+});
+
+btnMore.addEventListener('click', () => moreSheet.classList.remove('hidden'));
+btnMoreClose.addEventListener('click', () => moreSheet.classList.add('hidden'));
+moreSheet.addEventListener('click', (e) => {
+  const item = e.target.closest('.ms-item');
+  if (!item) return;
+  moreSheet.classList.add('hidden');
+  switchView(item.dataset.goto);
+});
+
+/* ================= 光线 ================= */
+const CITIES = [
+  ['南通', 32.0, 120.86], ['上海', 31.23, 121.47], ['北京', 39.9, 116.4],
+  ['南京', 32.06, 118.8], ['杭州', 30.27, 120.15], ['广州', 23.13, 113.26],
+  ['深圳', 22.54, 114.06], ['成都', 30.57, 104.07], ['西安', 34.34, 108.94],
+  ['哈尔滨', 45.75, 126.63], ['拉萨', 29.65, 91.1], ['乌鲁木齐', 43.82, 87.61]
+];
+const citySel = document.getElementById('citySel');
+const dateInput = document.getElementById('dateInput');
+const latInput = document.getElementById('latInput');
+const lngInput = document.getElementById('lngInput');
+const locNote = document.getElementById('locNote');
+const countLabel = document.getElementById('countLabel');
+const countValue = document.getElementById('countValue');
+const countDetail = document.getElementById('countDetail');
+const sunList = document.getElementById('sunList');
+const moonIcon = document.getElementById('moonIcon');
+const moonName = document.getElementById('moonName');
+const moonDetail = document.getElementById('moonDetail');
+
+CITIES.forEach((c, i) => {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = c[0];
+  citySel.appendChild(o);
+});
+const MOON_ICONS = { '新月': '🌑', '娥眉月': '🌒', '上弦月': '🌓', '盈凸月': '🌔', '满月': '🌕', '亏凸月': '🌖', '下弦月': '🌗', '残月': '🌘' };
+
+function selectedDate(){
+  const v = dateInput.value;
+  if (!v) return new Date();
+  const parts = v.split('-');
+  return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0);
+}
+function todayStr(d){
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+dateInput.value = todayStr(new Date());
+
+function renderLight(){
+  const lat = parseFloat(latInput.value), lng = parseFloat(lngInput.value);
+  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180){
+    sunList.innerHTML = '<div class="kv"><div class="k">经纬度无效</div><div class="v">请检查输入</div></div>';
+    return;
+  }
+  const date = selectedDate();
+  const t = getSunTimes(date, lat, lng);
+  const now = new Date();
+  const isToday = todayStr(date) === todayStr(now);
+
+  // 倒计时：下一个黄金时刻
+  let label = '距离下一个黄金时刻', value = '—', detail = '';
+  if (isToday && t.goldenAmStart && t.goldenAmEnd && t.goldenPmStart && t.goldenPmEnd){
+    if (now < t.goldenAmStart){
+      const diff = t.goldenAmStart - now;
+      value = fmtCountdown(diff); detail = '上午黄金时刻 ' + fmtTime(t.goldenAmStart) + ' – ' + fmtTime(t.goldenAmEnd) + ' 开始';
+    } else if (now >= t.goldenAmStart && now <= t.goldenAmEnd){
+      label = '正在黄金时刻'; value = '☀️ 上午黄金时刻'; detail = '持续到 ' + fmtTime(t.goldenAmEnd);
+    } else if (now < t.goldenPmStart){
+      const diff = t.goldenPmStart - now;
+      value = fmtCountdown(diff); detail = '下午黄金时刻 ' + fmtTime(t.goldenPmStart) + ' – ' + fmtTime(t.goldenPmEnd) + ' 开始';
+    } else if (now >= t.goldenPmStart && now <= t.goldenPmEnd){
+      label = '正在黄金时刻'; value = '🌇 下午黄金时刻'; detail = '持续到 ' + fmtTime(t.goldenPmEnd);
+    } else {
+      const tomorrow = new Date(date); tomorrow.setDate(tomorrow.getDate() + 1);
+      const tt = getSunTimes(tomorrow, lat, lng);
+      if (tt.goldenAmStart){
+        value = fmtCountdown(tt.goldenAmStart - now);
+        detail = '明天上午黄金时刻 ' + fmtTime(tt.goldenAmStart) + ' 开始';
+      }
+    }
+  } else if (!isToday){
+    label = '所选日期黄金时刻';
+    value = (t.goldenAmStart ? fmtTime(t.goldenAmStart) : '—') + ' / ' + (t.goldenPmStart ? fmtTime(t.goldenPmStart) : '—');
+    detail = '上午 / 下午开始时间（仅今日显示倒计时）';
+  }
+  countLabel.textContent = label; countValue.textContent = value; countDetail.textContent = detail;
+
+  // 太阳时刻表
+  const pos = sunPosition(now, lat, lng);
+  let dayLen = '无法计算';
+  if (t.sunrise && t.sunset){
+    const mins = Math.round((t.sunset - t.sunrise) / 60000);
+    dayLen = Math.floor(mins / 60) + '小时' + (mins % 60) + '分钟';
+  }
+  const rows = [
+    ['日出', fmtTime(t.sunrise), ''],
+    ['日落', fmtTime(t.sunset), ''],
+    ['太阳正午', fmtTime(t.solarNoon), ''],
+    ['白天时长', dayLen, ''],
+    ['黄金时刻 · 上午', (t.goldenAmStart && t.goldenAmEnd) ? fmtTime(t.goldenAmStart) + ' – ' + fmtTime(t.goldenAmEnd) : '无法计算', '太阳高度 0°–6°'],
+    ['黄金时刻 · 下午', (t.goldenPmStart && t.goldenPmEnd) ? fmtTime(t.goldenPmStart) + ' – ' + fmtTime(t.goldenPmEnd) : '无法计算', '太阳高度 6°–0°'],
+    ['蓝调时刻 · 上午', (t.blueAmStart && t.blueAmEnd) ? fmtTime(t.blueAmStart) + ' – ' + fmtTime(t.blueAmEnd) : '无法计算', '太阳高度 -6°– -4°'],
+    ['蓝调时刻 · 下午', (t.bluePmStart && t.bluePmEnd) ? fmtTime(t.bluePmStart) + ' – ' + fmtTime(t.bluePmEnd) : '无法计算', '太阳高度 -4°– -6°'],
+    ['当前太阳高度角', isToday ? pos.altitude.toFixed(1) + '°' : '—', isToday ? ('方位角 ' + pos.azimuth.toFixed(0) + '°（0=北，90=东）') : '仅今日显示']
+  ];
+  sunList.innerHTML = rows.map(r =>
+    '<div class="kv"><div class="k">' + r[0] + '</div><div class="v">' + r[1] + (r[2] ? '<small>' + r[2] + '</small>' : '') + '</div></div>'
+  ).join('');
+
+  // 月相
+  const mp = moonPhase(date);
+  moonIcon.textContent = MOON_ICONS[mp.name] || '🌔';
+  moonName.textContent = mp.name;
+  moonDetail.textContent = '月龄 ' + mp.age.toFixed(1) + ' 天 · 照亮 ' + Math.round(mp.illumination * 100) + '%';
+}
+
+function fmtCountdown(ms){
+  if (ms < 0) return '—';
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60), m = totalMin % 60;
+  if (h > 0) return h + '小时' + m + '分钟';
+  return m + '分钟';
+}
+
+citySel.addEventListener('change', () => {
+  const c = CITIES[parseInt(citySel.value, 10)];
+  latInput.value = c[1]; lngInput.value = c[2];
+  locNote.textContent = '当前位置：' + c[0] + '（' + c[1] + ', ' + c[2] + '）。';
+  renderLight();
+});
+document.getElementById('btnApplyLoc').addEventListener('click', () => {
+  locNote.textContent = '自定义位置（' + latInput.value + ', ' + lngInput.value + '）。';
+  renderLight();
+});
+dateInput.addEventListener('change', renderLight);
+document.getElementById('btnGeo').addEventListener('click', () => {
+  if (!navigator.geolocation){
+    locNote.textContent = '当前浏览器不支持定位，已使用默认位置南通。';
+    return;
+  }
+  locNote.textContent = '正在获取位置…';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      latInput.value = pos.coords.latitude.toFixed(2);
+      lngInput.value = pos.coords.longitude.toFixed(2);
+      locNote.textContent = '已使用你的位置（' + latInput.value + ', ' + lngInput.value + '），只在本地使用，不上传。';
+      renderLight();
+    },
+    () => { locNote.textContent = '未获得定位权限，已使用默认位置南通。'; renderLight(); },
+    { timeout: 8000 }
+  );
+});
+
+/* ================= 厂商风格模拟 ================= */
+function clamp255(v){ return v < 0 ? 0 : v > 255 ? 255 : v; }
+function applySat(r, g, b, amount){
+  const l = 0.299 * r + 0.587 * g + 0.114 * b;
+  return [clamp255(l + (r - l) * amount), clamp255(l + (g - l) * amount), clamp255(l + (b - l) * amount)];
+}
+function applyContrast(r, g, b, amount){
+  return [clamp255((r - 128) * amount + 128), clamp255((g - 128) * amount + 128), clamp255((b - 128) * amount + 128)];
+}
+function applySCurve(v, strength){
+  const x = v / 255;
+  const y = x + strength * x * (1 - x) * (x - 0.5) * 4;
+  return clamp255(y * 255);
+}
+function applyLift(v, lift){ return clamp255(v * (1 - lift / 255) + lift); }
+
+/* 每种风格 = 像素变换函数。均为模拟近似，非厂商官方色彩科学。 */
+const STYLES = [
+  { id: 'orig', name: '原图', en: 'Original', body: '#8a8578', top: '#6e695e', accent: '#c9c2b4',
+    fn: (r, g, b) => [r, g, b] },
+  { id: 'cc', name: '富士 Classic Chrome', en: 'FUJIFILM', body: '#3a3a3a', top: '#c8c4b8', accent: '#b7791f',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 0.78);
+      p = [applySCurve(p[0], 0.25), applySCurve(p[1], 0.25), applySCurve(p[2], 0.25)];
+      p = [clamp255(p[0] * 1.03), p[1], clamp255(p[2] * 0.96)];
+      p = [applyLift(p[0], 8), applyLift(p[1], 8), applyLift(p[2], 8)];
+      const n = (Math.random() - 0.5) * 7;
+      return [clamp255(p[0] + n), clamp255(p[1] + n), clamp255(p[2] + n)];
+    } },
+  { id: 'velvia', name: '富士 Velvia', en: 'FUJIFILM', body: '#2e2e2e', top: '#c8c4b8', accent: '#2f7d4f',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 1.38);
+      p = applyContrast(p[0], p[1], p[2], 1.08);
+      return [p[0], clamp255(p[1] * 1.04), clamp255(p[2] * 1.05)];
+    } },
+  { id: 'canon', name: '佳能人像', en: 'Canon', body: '#1c1c1c', top: '#1c1c1c', accent: '#c8102e',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 1.12);
+      p = applyContrast(p[0], p[1], p[2], 0.96);
+      return [clamp255(p[0] * 1.05), p[1], clamp255(p[2] * 0.94)];
+    } },
+  { id: 'nikon', name: '尼康鲜艳', en: 'Nikon', body: '#1c1c1c', top: '#1c1c1c', accent: '#f5c518',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 1.28);
+      p = applyContrast(p[0], p[1], p[2], 1.10);
+      return [p[0], p[1], clamp255(p[2] * 1.04)];
+    } },
+  { id: 'sony', name: '索尼胶片', en: 'SONY', body: '#242424', top: '#242424', accent: '#e67e22',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 0.88);
+      p = applyContrast(p[0], p[1], p[2], 0.97);
+      p = [applyLift(p[0], 12), applyLift(p[1], 12), applyLift(p[2], 12)];
+      return [clamp255(p[0] * 1.03), p[1], p[2]];
+    } },
+  { id: 'hassel', name: '哈苏自然', en: 'Hasselblad', body: '#2b2b2b', top: '#2b2b2b', accent: '#e8622c',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 1.02);
+      p = applyContrast(p[0], p[1], p[2], 1.03);
+      return p;
+    } },
+  { id: 'g7x3', name: 'G7X3', en: 'Canon G7X III', body: '#1c1c1c', top: '#3a3a3a', accent: '#c8102e',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 1.18);
+      p = applyContrast(p[0], p[1], p[2], 1.06);
+      return [clamp255(p[0] * 1.04), p[1], clamp255(p[2] * 0.96)];
+    } },
+  { id: 'x100v', name: 'X100V', en: 'FUJIFILM X100V', body: '#3a3a3a', top: '#d8d2c2', accent: '#b7791f',
+    fn: (r, g, b) => {
+      let p = applySat(r, g, b, 1.05);
+      p = [applySCurve(p[0], 0.2), applySCurve(p[1], 0.2), applySCurve(p[2], 0.2)];
+      p = [clamp255(p[0] * 1.04), p[1], clamp255(p[2] * 0.97)];
+      p = [applyLift(p[0], 5), applyLift(p[1], 5), applyLift(p[2], 5)];
+      const n = (Math.random() - 0.5) * 9;
+      return [clamp255(p[0] + n), clamp255(p[1] + n), clamp255(p[2] + n)];
+    } }
+];
+
+/* 原创 SVG 相机插画（简笔线条风格，非厂商官方图片） */
+function cameraSVG(body, top, accent){
+  return '<svg viewBox="0 0 64 44" xmlns="http://www.w3.org/2000/svg">'
+    + '<rect x="4" y="10" width="56" height="30" rx="5" fill="' + body + '"/>'
+    + '<rect x="4" y="10" width="56" height="9" rx="5" fill="' + top + '"/>'
+    + '<rect x="22" y="5" width="14" height="7" rx="2" fill="' + body + '"/>'
+    + '<circle cx="32" cy="25" r="11" fill="#111" stroke="' + accent + '" stroke-width="1.6"/>'
+    + '<circle cx="32" cy="25" r="6.5" fill="#2c4a63"/>'
+    + '<circle cx="34.5" cy="22.5" r="2" fill="#9fc4dd" opacity="0.85"/>'
+    + '<circle cx="53" cy="14.5" r="1.8" fill="' + accent + '"/>'
+    + '<rect x="8" y="14" width="7" height="3" rx="1.5" fill="' + accent + '" opacity="0.9"/>'
+    + '</svg>';
+}
+
+const styleRow = document.getElementById('styleRow');
+const styleCanvas = document.getElementById('styleCanvas');
+const styleFile = document.getElementById('styleFile');
+const styleUpload = document.getElementById('styleUpload');
+const btnStyleDownload = document.getElementById('btnStyleDownload');
+let styleImg = null, styleOrigData = null, curStyle = 'orig';
+
+STYLES.forEach((s) => {
+  const d = document.createElement('div');
+  d.className = 'cam-card' + (s.id === 'orig' ? ' on' : '');
+  d.dataset.style = s.id;
+  d.innerHTML = cameraSVG(s.body, s.top, s.accent) + '<div class="nm">' + s.name + '</div><div class="en">' + s.en + '</div>';
+  styleRow.appendChild(d);
+});
+
+styleUpload.addEventListener('click', () => styleFile.click());
+styleFile.addEventListener('change', () => {
+  const f = styleFile.files && styleFile.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    styleImg = img;
+    const maxW = 1200;
+    const scale = Math.min(1, maxW / img.naturalWidth);
+    styleCanvas.width = Math.round(img.naturalWidth * scale);
+    styleCanvas.height = Math.round(img.naturalHeight * scale);
+    styleCanvas.classList.remove('hidden');
+    btnStyleDownload.classList.remove('hidden');
+    applyStyle();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); };
+  img.src = url;
+});
+
+function applyStyle(){
+  if (!styleImg) return;
+  const ctx = styleCanvas.getContext('2d');
+  ctx.drawImage(styleImg, 0, 0, styleCanvas.width, styleCanvas.height);
+  const st = STYLES.find(s => s.id === curStyle) || STYLES[0];
+  if (st.id === 'orig') return;
+  const imgData = ctx.getImageData(0, 0, styleCanvas.width, styleCanvas.height);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4){
+    const p = st.fn(d[i], d[i + 1], d[i + 2]);
+    d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2];
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+styleRow.addEventListener('click', (e) => {
+  const c = e.target.closest('.cam-card'); if (!c) return;
+  document.querySelectorAll('#styleRow .cam-card').forEach(el => el.classList.remove('on'));
+  c.classList.add('on');
+  curStyle = c.dataset.style;
+  applyStyle();
+});
+
+btnStyleDownload.addEventListener('click', () => {
+  const st = STYLES.find(s => s.id === curStyle) || STYLES[0];
+  const a = document.createElement('a');
+  a.href = styleCanvas.toDataURL('image/jpeg', 0.92);
+  a.download = '追光相机_' + st.name.replace(/\s+/g, '_') + '.jpg';
+  a.click();
+});
+
+/* ================= 构图检查 ================= */
+const compCanvas = document.getElementById('compCanvas');
+const compFile = document.getElementById('compFile');
+const compUpload = document.getElementById('compUpload');
+let compImg = null, curGrid = 'thirds';
+
+compUpload.addEventListener('click', () => compFile.click());
+compFile.addEventListener('change', () => {
+  const f = compFile.files && compFile.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    compImg = img;
+    const maxW = 1200;
+    const scale = Math.min(1, maxW / img.naturalWidth);
+    compCanvas.width = Math.round(img.naturalWidth * scale);
+    compCanvas.height = Math.round(img.naturalHeight * scale);
+    compCanvas.classList.remove('hidden');
+    drawComp();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); };
+  img.src = url;
+});
+
+function drawComp(){
+  if (!compImg) return;
+  const ctx = compCanvas.getContext('2d');
+  const w = compCanvas.width, h = compCanvas.height;
+  ctx.drawImage(compImg, 0, 0, w, h);
+  if (curGrid === 'none') return;
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = Math.max(1, w / 600);
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  if (curGrid === 'thirds'){
+    ctx.moveTo(w / 3, 0); ctx.lineTo(w / 3, h);
+    ctx.moveTo(2 * w / 3, 0); ctx.lineTo(2 * w / 3, h);
+    ctx.moveTo(0, h / 3); ctx.lineTo(w, h / 3);
+    ctx.moveTo(0, 2 * h / 3); ctx.lineTo(w, 2 * h / 3);
+  } else if (curGrid === 'golden'){
+    const phi = 1.6180339887;
+    const x1 = w / (phi * phi), x2 = w - w / (phi * phi);
+    const y1 = h / (phi * phi), y2 = h - h / (phi * phi);
+    ctx.moveTo(x1, 0); ctx.lineTo(x1, h);
+    ctx.moveTo(x2, 0); ctx.lineTo(x2, h);
+    ctx.moveTo(0, y1); ctx.lineTo(w, y1);
+    ctx.moveTo(0, y2); ctx.lineTo(w, y2);
+    ctx.stroke();
+    // 黄金螺旋：在画布内取黄金矩形，沿斐波那契细分依次画四分之一圆弧
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255,200,80,0.9)';
+    ctx.beginPath();
+    const PHI = 1.6180339887;
+    let rx = 0, ry = 0, rw = w, rh = h;
+    if (rw / rh > PHI) { const nw = rh * PHI; rx = (rw - nw) / 2; rw = nw; }
+    else { const nh = rw / PHI; ry = (rh - nh) / 2; rh = nh; }
+    let sx = rx, sy = ry, sw = rw, sh = rh;
+    for (let i = 0; i < 8; i++){
+      const s = Math.min(sw, sh);
+      if (s < 5) break;
+      const dir = i % 4;
+      if (dir === 0){ ctx.arc(sx + s, sy + s, s, Math.PI, Math.PI * 1.5); sx += s; sw -= s; }
+      else if (dir === 1){ ctx.arc(sx, sy + s, s, Math.PI * 1.5, Math.PI * 2); sy += s; sh -= s; }
+      else if (dir === 2){ ctx.arc(sx + sw, sy + s, s, Math.PI * 1.5, Math.PI, true); sw -= s; }
+      else { ctx.arc(sx, sy + sh, s, 0, Math.PI * 1.5, true); sh -= s; }
+    }
+    ctx.stroke();
+    return;
+  } else if (curGrid === 'diag'){
+    ctx.moveTo(0, 0); ctx.lineTo(w, h);
+    ctx.moveTo(w, 0); ctx.lineTo(0, h);
+    ctx.moveTo(w / 2, 0); ctx.lineTo(w, h / 2); ctx.lineTo(0, h / 2); ctx.lineTo(w / 2, 0);
+    ctx.moveTo(0, h / 2); ctx.lineTo(w / 2, h); ctx.lineTo(w, h / 2);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+document.getElementById('gridPills').addEventListener('click', (e) => {
+  const b = e.target.closest('.pill'); if (!b) return;
+  document.querySelectorAll('#gridPills .pill').forEach(p => p.classList.remove('on'));
+  b.classList.add('on');
+  curGrid = b.dataset.grid;
+  drawComp();
+});
+
+/* ================= 景深 / 曝光 ================= */
+document.getElementById('btnDof').addEventListener('click', () => {
+  const f = parseFloat(document.getElementById('dofFocal').value);
+  const N = parseFloat(document.getElementById('dofAperture').value);
+  const s = parseFloat(document.getElementById('dofDist').value);
+  const c = parseFloat(document.getElementById('dofSensor').value);
+  const out = document.getElementById('dofResult');
+  out.classList.remove('hidden');
+  if ([f, N, s, c].some(v => isNaN(v) || v <= 0)){
+    out.innerHTML = '请输入有效的焦距、光圈与距离。';
+    return;
+  }
+  const r = calcDOF(f, N, s, c);
+  if (!r){
+    out.innerHTML = '拍摄距离小于焦距，无法计算。';
+    return;
+  }
+  out.innerHTML = '超焦距 <b>' + fmtMeters(r.hyperfocalM) + '</b><br>'
+    + '近景深界限 <b>' + fmtMeters(r.nearM) + '</b> · 远景深界限 <b>' + fmtMeters(r.farM) + '</b><br>'
+    + '总景深 <b>' + fmtMeters(r.totalM) + '</b>';
+});
+
+document.getElementById('btnExp').addEventListener('click', () => {
+  const iso = parseFloat(document.getElementById('expIso').value);
+  const N = parseFloat(document.getElementById('expAperture').value);
+  const t = parseFloat(document.getElementById('expShutter').value);
+  const out = document.getElementById('expResult');
+  out.classList.remove('hidden');
+  const ev = calcEV(N, t, iso);
+  const combos = equivalentCombos(ev, iso);
+  let html = '当前曝光值 <b>EV ' + ev.toFixed(1) + '</b>（ISO ' + iso + '）<br>等效组合：<br>';
+  html += combos.map(c => 'f/' + c.aperture + ' · ' + fmtShutter(c.shutter)).join('　|　');
+  out.innerHTML = html;
+});
+
+document.getElementById('btnNd').addEventListener('click', () => {
+  const base = parseFloat(document.getElementById('ndBase').value);
+  const stops = parseFloat(document.getElementById('ndStops').value);
+  const out = document.getElementById('ndResult');
+  out.classList.remove('hidden');
+  if (isNaN(base) || base <= 0){
+    out.innerHTML = '请输入有效的基础快门时间（秒）。';
+    return;
+  }
+  out.innerHTML = '加 ND 后快门时间：<b>' + fmtShutter(ndTime(base, stops)) + '</b>（基础 ' + fmtShutter(base) + '，+' + stops + ' 档）';
+});
+
+/* ================= 导航与初始化 ================= */
+function switchView(v){
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('on', n.dataset.view === v));
+  document.querySelectorAll('.view').forEach(sec => sec.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.body.classList.toggle('cam-active', v === 'camera');
+  if (v === 'light') renderLight();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => switchView(item.dataset.view));
+});
+
+document.querySelectorAll('.tool-card .t-head').forEach(head => {
+  head.addEventListener('click', () => {
+    const card = head.closest('.tool-card');
+    const wasOpen = card.classList.contains('open');
+    document.querySelectorAll('.tool-card').forEach(c => c.classList.remove('open'));
+    if (!wasOpen) card.classList.add('open');
+  });
+});
+
+document.body.classList.add('cam-active'); // 默认视图为相机，全屏取景
+renderLight();
+setInterval(() => {
+  if (document.getElementById('view-light').classList.contains('active')) renderLight();
+}, 60000);
+</script>
+</body>
+</html>
