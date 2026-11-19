@@ -528,7 +528,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v4.5 原型 · LifeHack</div>
+    <div class="ver">v4.6 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -884,6 +884,7 @@
           <li>去瑕疵：拍照后点按痣 / 痘痘修复，带撤销与恢复原图</li>
           <li>实际分辨率显示：美颜面板内可见摄像头真实分辨率</li>
           <li>修复：拍照 / 录像模式下不再显示预录 chip</li>
+          <li>修复：磨皮模糊半径随分辨率放大（1080p 约 8px），此前半径 2px 在高清照片上几乎看不出效果</li>
         </ul>
       </div>
       <div class="glass about-card">
@@ -927,7 +928,7 @@
           <li>AI 美颜：自填 API，用自己的模型做美颜</li>
         </ul>
       </div>
-      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v4.5 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
+      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v4.6 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
     </section>
   </main>
 
@@ -1832,7 +1833,11 @@ function applyBeautyToPhoto(ctx, w, h){
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   const blurSharp = sharp > 0 ? boxBlurSeparable(d, w, h, 1) : null;
-  const blurSkin = smooth > 0 ? boxBlurSeparable(d, w, h, 2) : null;
+  // v4.6：磨皮模糊半径随分辨率放大——此前固定半径 2px，在 1080p 照片上与原图几乎无差，
+  // 混再多也看不出来（用户 2026-11-19 实测“磨皮还是没用”的根因）。1080p 约 8px，720p 约 5px，上限 12px。
+  // 滑动窗口实现，半径加大几乎不增加耗时；混合上限仍为 0.55（宁弱勿过）。
+  const skinR = Math.min(12, Math.max(2, Math.round(Math.min(w, h) / 135)));
+  const blurSkin = smooth > 0 ? boxBlurSeparable(d, w, h, skinR) : null;
   const sK = smooth / 100;      // 磨皮强度 0..1（线性，暖粉推送用）
   // v4.3：磨皮混合改开方曲线——v4.1 线性时默认 30 混合只有约 0.17，用户感觉不出来；
   // 开方后默认 30 混合约 0.30（sqrt(0.3)×0.55），拉满仍是上限 0.55（不塑料），0 时仍为 0。
