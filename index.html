@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="追光相机：预录制相机 + 摄影工具箱。所有处理均在本地完成，不上传任何内容。">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
 <title>追光相机</title>
 <style>
   :root{
@@ -87,10 +93,10 @@
   .cam-topbar{
     position:absolute;top:0;left:0;right:0;z-index:5;
     display:flex;align-items:center;justify-content:space-between;gap:8px;
-    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+    padding:calc(10px + env(safe-area-inset-top)) 10px 10px;
     background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0));
   }
-  .cam-topbar .t-left,.cam-topbar .t-right{display:flex;align-items:center;gap:10px}
+  .cam-topbar .t-left,.cam-topbar .t-right{display:flex;align-items:center;gap:6px}
   .cam-icon-btn{
     width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
     background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;
@@ -101,12 +107,12 @@
   .cam-icon-btn.on{background:var(--gold);color:#fff}
   .cam-chip{
     border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;
-    font-size:.78rem;padding:6px 12px;border-radius:999px;cursor:pointer;
+    font-size:.78rem;padding:6px 6px;border-radius:999px;cursor:pointer;white-space:nowrap;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .nr-badge{
     font-size:.72rem;color:#a8e6a3;background:rgba(0,0,0,.35);
-    padding:5px 10px;border-radius:999px;
+    padding:5px 6px;border-radius:999px;white-space:nowrap;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .voice-note{
@@ -126,26 +132,46 @@
     padding:5px 12px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
-  .vf-empty{position:absolute;inset:0 0 calc(180px + env(safe-area-inset-bottom)) 0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ddd;text-align:center;padding:24px;background:#111}
+  /* v3.3：占位内容锚定到底部、紧贴模式栏，上方黑区变“待启动取景器”，四角加淡淡的取景框角标 */
+  .vf-empty{position:absolute;inset:0 0 calc(180px + env(safe-area-inset-bottom)) 0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:12px;color:#ddd;text-align:center;padding:24px 24px 28px;background:#111}
   .vf-empty .big{font-size:2.2rem}
-  /* 焦段选择胶囊（截图样式：15 / 24mm / 50 / 85 / 250） */
-  .focal-pill{
+  .vf-corners{position:absolute;left:9%;right:9%;top:13%;bottom:236px;pointer-events:none}
+  .vf-corners .vc{position:absolute;width:30px;height:30px;border:2px solid rgba(255,255,255,.35)}
+  .vf-corners .tl{left:0;top:0;border-right:none;border-bottom:none;border-radius:4px 0 0 0}
+  .vf-corners .tr{right:0;top:0;border-left:none;border-bottom:none;border-radius:0 4px 0 0}
+  .vf-corners .bl{left:0;bottom:0;border-right:none;border-top:none;border-radius:0 0 0 4px}
+  .vf-corners .br{right:0;bottom:0;border-left:none;border-top:none;border-radius:0 0 4px 0}
+  /* v3.3：弧形变焦拨盘（替代点击式胶囊）：SVG 弧线 + 可拖动滑块，对数映射，刻度 15/24/50/85/135/250 */
+  .focal-dial{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(250px + env(safe-area-inset-bottom));z-index:5;
-    display:flex;align-items:center;gap:2px;
-    background:rgba(0,0,0,.45);border-radius:999px;padding:6px 10px;
-    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    bottom:calc(246px + env(safe-area-inset-bottom));z-index:5;
+    width:min(320px,88vw);text-align:center;
   }
-  .focal-pill button{
-    border:none;background:transparent;color:rgba(255,255,255,.75);cursor:pointer;
-    font-size:.88rem;font-weight:600;padding:5px 11px;border-radius:999px;line-height:1.15;
+  .focal-dial .fd-readout{
+    font-size:1rem;font-weight:700;color:#f5c518;line-height:1.2;
+    text-shadow:0 1px 3px rgba(0,0,0,.8);font-variant-numeric:tabular-nums;
   }
-  .focal-pill button small{display:block;font-size:.6rem;font-weight:400;opacity:.8}
-  .focal-pill button.on{background:rgba(255,255,255,.16);color:#f5c518}
+  .focal-dial svg{display:block;width:100%;height:auto;touch-action:none;cursor:pointer}
   .focal-note{
     position:absolute;left:0;right:0;text-align:center;
-    bottom:calc(230px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(362px + env(safe-area-inset-bottom));z-index:5;
     font-size:.68rem;color:rgba(255,255,255,.65);text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;
+  }
+  /* v3.3：帧率选择菜单（顶栏帧率 chip 下拉） */
+  .fps-menu{
+    position:absolute;top:calc(56px + env(safe-area-inset-top));right:12px;z-index:8;
+    background:rgba(20,18,14,.95);border:1px solid rgba(255,255,255,.16);border-radius:12px;
+    padding:6px;min-width:132px;
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  }
+  .fps-menu button{
+    display:block;width:100%;text-align:left;border:none;background:transparent;color:#fff;
+    font-size:.85rem;padding:9px 10px;border-radius:8px;cursor:pointer;
+  }
+  .fps-menu button.on{color:#f5c518;font-weight:700;background:rgba(245,197,24,.12)}
+  .fps-menu .fps-actual{
+    border-top:1px solid rgba(255,255,255,.12);margin-top:4px;padding:8px 10px 4px;
+    font-size:.7rem;color:rgba(255,255,255,.6);line-height:1.5;
   }
   /* 底部模式栏 */
   .mode-tabs{
@@ -247,6 +273,8 @@
   .ms-item svg{width:26px;height:26px;display:block;margin:0 auto 6px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .ms-item .nm{font-size:.85rem;font-weight:600}
   .ms-item .ds{font-size:.68rem;color:rgba(255,255,255,.6);margin-top:2px}
+  /* v3.3：左上角超级防抖开关 chip——暗色为关，金色填充为开，chip 本身即状态指示 */
+  .stab-chip.on{background:#f5c518;border-color:#f5c518;color:#1a1508;font-weight:700}
   .ms-close{
     display:block;margin:14px auto 0;border:none;background:rgba(255,255,255,.12);color:#fff;
     font-size:.85rem;padding:8px 28px;border-radius:999px;cursor:pointer;
@@ -417,8 +445,8 @@
     .voice-indicator{left:calc(50% - 160px)}
     .cam-toast{left:calc(50% - 160px);bottom:40px}
 
-    /* 桌面端没有变焦：焦段胶囊与说明隐藏（手机端保留） */
-    .focal-pill, .focal-note{display:none !important}
+    /* 桌面端没有变焦：变焦拨盘与说明隐藏（手机端保留） */
+    .focal-dial, .focal-note{display:none !important}
 
     /* 侧栏：风格条改竖向列表 */
     .style-strip{
@@ -464,7 +492,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v3.2 原型 · LifeHack</div>
+    <div class="ver">v3.4 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -481,8 +509,10 @@
               <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
             </button>
             <span class="nr-badge hidden" id="nrBadge">降噪已开</span>
+            <button class="cam-chip stab-chip" id="btnStab" aria-label="超级防抖开关" title="超级防抖（陀螺仪电子防抖，视角略窄）">超级防抖</button>
           </div>
           <div class="t-right">
+            <button class="cam-chip" id="btnFps">60fps</button>
             <button class="cam-chip" id="btnBuffer">预录 30s</button>
             <button class="cam-icon-btn" id="btnMore" aria-label="更多" title="更多">
               <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
@@ -490,6 +520,14 @@
           </div>
         </div>
         <div class="voice-note hidden" id="voiceNote">语音识别需联网，音频会发送到识别服务 · 说“开始录像 / 停止录像 / 拍照”</div>
+
+        <!-- 帧率选择菜单（默认 60fps；设备给不到时如实显示实际帧率） -->
+        <div class="fps-menu hidden" id="fpsMenu">
+          <button data-fps="24">24 fps</button>
+          <button data-fps="30">30 fps</button>
+          <button data-fps="60" class="on">60 fps</button>
+          <div class="fps-actual" id="fpsActual">当前实际：—（打开相机后显示）</div>
+        </div>
 
         <!-- 缓存 / 录制状态 -->
         <div class="vf-overlay hidden" id="bufferBadge"><span class="vf-dot"></span><span id="bufferText">正在缓存 0 秒</span></div>
@@ -522,8 +560,9 @@
           <div class="rp-note" id="rangeCalNote">未标定。标定方法：把已知高度的物体放在已知距离处，拖动框线对齐物体顶部和底部，输入高度与距离后点“标定”。浏览器拿不到深度传感器数据，估算误差约 ±10–20%，仅供参考。换焦段后需重新标定（或按变焦倍率换算）。</div>
         </div>
 
-        <!-- 未开相机时的占位 -->
+        <!-- 未开相机时的占位（内容锚定底部，上方为待启动取景器） -->
         <div class="vf-empty" id="camEmpty">
+          <div class="vf-corners" aria-hidden="true"><span class="vc tl"></span><span class="vc tr"></span><span class="vc bl"></span><span class="vc br"></span></div>
           <div class="big">📷</div>
           <div>打开相机，开始预录制<br><span class="hint" style="color:#999">按下录制前的一段画面也会被保存下来</span></div>
           <button class="btn" id="btnStartCam">打开相机</button>
@@ -532,13 +571,23 @@
 
         <div class="glass err-box hidden" id="camError" style="padding:14px 16px"></div>
 
-        <!-- 焦段选择胶囊（相机未打开时隐藏，避免遮挡打开按钮） -->
-        <div class="focal-pill hidden" id="focalPill">
-          <button data-focal="15">15</button>
-          <button data-focal="24" class="on">24<small>mm</small></button>
-          <button data-focal="50">50</button>
-          <button data-focal="85">85</button>
-          <button data-focal="250">250</button>
+        <!-- 弧形变焦拨盘（相机未打开时隐藏；拖动滑块连续变焦，对数映射，刻度吸附；上限 250mm） -->
+        <div class="focal-dial hidden" id="focalDial">
+          <div class="fd-readout" id="focalReadout">24mm</div>
+          <svg id="focalDialSvg" viewBox="0 0 280 76" aria-label="变焦拨盘">
+            <path d="M 20 50 A 300 300 0 0 1 260 50" stroke="rgba(255,255,255,.25)" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path id="dialProgress" d="M 20 50 A 300 300 0 0 1 58.8 36.2" stroke="#f5c518" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <g stroke="rgba(255,255,255,.5)" stroke-width="1.5">
+              <line x1="20" y1="50" x2="24" y2="59.2"/><line x1="58.8" y1="36.2" x2="61.5" y2="45.8"/>
+              <line x1="122.2" y1="25.5" x2="122.8" y2="35.5"/><line x1="168.7" y1="26.4" x2="167.8" y2="36.3"/>
+              <line x1="208.8" y1="33" x2="206.5" y2="42.7"/><line x1="260" y1="50" x2="256" y2="59.2"/>
+            </g>
+            <g font-size="9" fill="rgba(255,255,255,.75)" text-anchor="middle">
+              <text x="28" y="68.4">15</text><text x="64.2" y="55.4">24</text><text x="123.4" y="45.5">50</text>
+              <text x="166.8" y="46.3">85</text><text x="204.2" y="52.5">135</text><text x="252" y="68.4">250</text>
+            </g>
+            <circle id="dialThumb" cx="58.8" cy="36.2" r="11" fill="#f5c518" stroke="#fff" stroke-width="2"/>
+          </svg>
         </div>
         <div class="focal-note hidden" id="focalNote"></div>
 
@@ -585,6 +634,10 @@
             <div class="ms-item" data-action="range">
               <svg viewBox="0 0 24 24"><path d="M3 17h18M5 17v-3M12 17v-5M19 17v-3"/><circle cx="12" cy="8" r="2.5"/></svg>
               <div class="nm">测距</div><div class="ds">对焦距离 · 估算</div>
+            </div>
+            <div class="ms-item" data-action="fullscreen" id="fsItem">
+              <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+              <div class="nm">全屏</div><div class="ds">隐藏浏览器栏</div>
             </div>
           </div>
           <p style="text-align:center;font-size:.72rem;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6">取景器选的风格会一同保存到照片和视频里；<br>部分设备录像无法实时带风格时，会保存原画并提示。风格为模拟近似，非厂商官方色彩科学。</p>
@@ -982,8 +1035,16 @@ const btnVoice = document.getElementById('btnVoice');
 const voiceNote = document.getElementById('voiceNote');
 const voiceIndicator = document.getElementById('voiceIndicator');
 const nrBadge = document.getElementById('nrBadge');
-const focalPill = document.getElementById('focalPill');
+const focalDial = document.getElementById('focalDial');
+const focalDialSvg = document.getElementById('focalDialSvg');
+const focalReadout = document.getElementById('focalReadout');
+const dialThumb = document.getElementById('dialThumb');
+const dialProgress = document.getElementById('dialProgress');
 const focalNote = document.getElementById('focalNote');
+const btnFps = document.getElementById('btnFps');
+const fpsMenu = document.getElementById('fpsMenu');
+const fpsActual = document.getElementById('fpsActual');
+const btnStab = document.getElementById('btnStab');
 const camToast = document.getElementById('camToast');
 const camScreen = document.getElementById('camScreen');
 const viewCanvas = document.getElementById('viewCanvas');
@@ -1008,6 +1069,21 @@ let audioOn = false;
 let zoomCap = null;
 let curFocal = 24;
 let curZoom = 1;
+// v3.3：帧率选择（24/30/60，默认 60），存在 localStorage；actualFps 为设备实际给到的帧率
+const FPS_OPTIONS = [24, 30, 60];
+let selectedFps = 60;
+try {
+  const savedFps = parseInt(localStorage.getItem('zg-fps'), 10);
+  if (FPS_OPTIONS.indexOf(savedFps) >= 0) selectedFps = savedFps;
+} catch (e) {}
+let actualFps = 0;
+// v3.3：超级防抖（陀螺仪电子防抖）状态；STAB_CROP 为裁切倍率（1.12x，留出防抖边距，视角略窄）
+const STAB_CROP = 1.12;
+let stabOn = false;
+try { stabOn = localStorage.getItem('zg-stab') === '1'; } catch (e) {}
+let stabListening = false, stabHasBase = false, stabCheckTimer = null;
+let stabBaseBeta = 0, stabBaseGamma = 0, stabRelBeta = 0, stabRelGamma = 0;
+let stabOffX = 0, stabOffY = 0; // 归一化偏移（相对画面宽/高的分数）
 let hasResult = false;
 let camStyle = 'orig'; // 取景器当前风格（与 STYLES 的 id 对应）
 let procCtx = null, procStream = null, procRaf = 0;
@@ -1077,6 +1153,37 @@ async function updateFlipVisibility(){
   } catch (e) {}
 }
 
+/* ---- v3.3：帧率选择（24/30/60，默认 60；如实显示设备实际帧率） ---- */
+function updateFpsUI(){
+  // 相机已开且实际帧率明显低于所选值时，chip 显示实际值，绝不谎称所选值
+  if (camReady && actualFps > 0 && actualFps < selectedFps - 2){
+    btnFps.textContent = '实际' + Math.round(actualFps) + 'fps';
+  } else {
+    btnFps.textContent = selectedFps + 'fps';
+  }
+  fpsMenu.querySelectorAll('button[data-fps]').forEach(b => {
+    b.classList.toggle('on', parseInt(b.dataset.fps, 10) === selectedFps);
+  });
+  fpsActual.textContent = (camReady && actualFps > 0)
+    ? '当前实际：约 ' + Math.round(actualFps) + 'fps'
+    : '当前实际：—（打开相机后显示）';
+}
+async function setFps(fps){
+  fpsMenu.classList.add('hidden');
+  if (fps === selectedFps) return;
+  if (isRecording){ showToast('录制中无法切换帧率'); return; }
+  selectedFps = fps;
+  try { localStorage.setItem('zg-fps', String(fps)); } catch (e) {}
+  updateFpsUI();
+  if (!camReady){ showToast('帧率 ' + fps + 'fps（打开相机后生效）'); return; }
+  // 切帧率需重开摄像头流（与切换前后摄像头同一模式）
+  stopCameraTracks();
+  camReady = false;
+  camVideo.srcObject = null;
+  await startCamera();
+  showToast('已切换到 ' + fps + 'fps');
+}
+
 async function startCamera(){
   camError.classList.add('hidden');
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
@@ -1087,7 +1194,7 @@ async function startCamera(){
     showCamError('<b>当前浏览器不支持录制功能（缺少 MediaRecorder）。</b><br>请使用新版 Chrome / Safari / Edge 打开本页面。');
     return;
   }
-  const videoConstraints = { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } };
+  const videoConstraints = { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: selectedFps } };
   const audioConstraints = { noiseSuppression: true, echoCancellation: true, autoGainControl: true };
   try {
     camStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: audioConstraints });
@@ -1112,11 +1219,21 @@ async function startCamera(){
   try { await camVideo.play(); } catch (e) {}
   camEmpty.classList.add('hidden');
   camReady = true;
-  // 相机打开后才显示焦段胶囊与风格条（未打开时它们会遮挡打开按钮）
-  focalPill.classList.remove('hidden');
+  // 相机打开后才显示变焦拨盘与风格条（未打开时它们会遮挡打开按钮）
+  focalDial.classList.remove('hidden');
   focalNote.classList.remove('hidden');
   styleStrip.classList.remove('hidden');
   updateFlipVisibility();
+  // v3.3：如实读取设备实际帧率，给不到所选值时不谎称，只显示实际值
+  actualFps = 0;
+  try {
+    const vTrack = camStream.getVideoTracks()[0];
+    if (vTrack && vTrack.getSettings) actualFps = vTrack.getSettings().frameRate || 0;
+  } catch (e) {}
+  updateFpsUI();
+  if (actualFps > 0 && actualFps < selectedFps - 2){
+    showToast('当前设备实际约 ' + Math.round(actualFps) + 'fps，未达到 ' + selectedFps + 'fps');
+  }
   // 降噪指示：仅当音频轨实际报告 noiseSuppression 开启时显示
   const aTracks = camStream.getAudioTracks();
   if (aTracks.length){
@@ -1139,6 +1256,8 @@ async function startCamera(){
   });
   startProcessing();
   startBuffering();
+  // v3.3：防抖开关上次是开着的，相机打开后自动接回陀螺仪（Android 无需手势；iOS 需手势授权，失败时由 attachStab 提示并弹回）
+  if (stabOn && !stabListening) attachStab(true);
 }
 
 function stopCameraTracks(){
@@ -1155,9 +1274,10 @@ function stopCameraTracks(){
   curZoom = 1;
   bufferBadge.classList.add('hidden');
   nrBadge.classList.add('hidden');
-  focalPill.classList.add('hidden');
+  focalDial.classList.add('hidden');
   focalNote.classList.add('hidden');
   styleStrip.classList.add('hidden');
+  updateStabUI(); // 处理已停，防抖 chip 状态同步（开关与陀螺仪监听保持，下次开相机自动接回）
   applyVideoTransform();
 }
 
@@ -1195,7 +1315,7 @@ function applyVideoTransform(){
 
 function applyFocal(focal){
   curFocal = focal;
-  document.querySelectorAll('#focalPill button').forEach(b => b.classList.toggle('on', parseInt(b.dataset.focal, 10) === focal));
+  updateDialUI();
   if (!camReady){ updateFocalNote(); return; }
   const want = focal / 24;
   if (zoomCap){
@@ -1227,7 +1347,8 @@ function updateFocalNote(){
   if (!camReady){ focalNote.textContent = ''; return; }
   const want = curFocal / 24;
   if (want < 1 && curZoom >= 1){
-    focalNote.textContent = '15mm 需超广角镜头，当前设备不支持，已用最广视角';
+    // 拨盘可连续选到 15–24mm 之间，文案用当前焦段而非固定写 15mm
+    focalNote.textContent = Math.round(curFocal) + 'mm 需超广角镜头，当前设备不支持，已用最广视角';
     return;
   }
   if (zoomCap){
@@ -1239,6 +1360,165 @@ function updateFocalNote(){
   } else {
     focalNote.textContent = '';
   }
+}
+
+/* ---- v3.3：弧形变焦拨盘（SVG 弧线，圆心 (140,325)，半径 300；对数映射，刻度吸附） ---- */
+const FOCAL_MIN = 15, FOCAL_MAX = 250;
+const FOCAL_STOPS = [15, 24, 50, 85, 135, 250];
+const DIAL_CX = 140, DIAL_CY = 325, DIAL_R = 300;
+const DIAL_A0 = Math.atan2(50 - DIAL_CY, 20 - DIAL_CX);
+const DIAL_A1 = Math.atan2(50 - DIAL_CY, 260 - DIAL_CX);
+function focalToT(f){ return Math.log(f / FOCAL_MIN) / Math.log(FOCAL_MAX / FOCAL_MIN); }
+function tToFocal(t){ return FOCAL_MIN * Math.pow(FOCAL_MAX / FOCAL_MIN, t); }
+function arcPoint(t){
+  const a = DIAL_A0 + t * (DIAL_A1 - DIAL_A0);
+  return { x: DIAL_CX + DIAL_R * Math.cos(a), y: DIAL_CY + DIAL_R * Math.sin(a) };
+}
+function updateDialUI(){
+  const t = Math.min(1, Math.max(0, focalToT(curFocal)));
+  const p = arcPoint(t);
+  dialThumb.setAttribute('cx', p.x.toFixed(1));
+  dialThumb.setAttribute('cy', p.y.toFixed(1));
+  dialProgress.setAttribute('d', 'M 20 50 A 300 300 0 0 1 ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1));
+  focalReadout.textContent = Math.round(curFocal) + 'mm';
+}
+let dialDragging = false, dialLastApply = 0;
+function dialEventToT(e){
+  const rect = focalDialSvg.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * 280;
+  const y = (e.clientY - rect.top) / rect.height * 76;
+  const a = Math.atan2(y - DIAL_CY, x - DIAL_CX);
+  let t = (a - DIAL_A0) / (DIAL_A1 - DIAL_A0);
+  t = Math.min(1, Math.max(0, t));
+  for (const s of FOCAL_STOPS){
+    if (Math.abs(t - focalToT(s)) < 0.03){ t = focalToT(s); break; }
+  }
+  return t;
+}
+function dialApply(t, force){
+  const focal = tToFocal(t);
+  const now = performance.now();
+  if (!force && now - dialLastApply < 120){
+    // 拖动节流：UI 实时跟手，变焦指令最多 120ms 发一次，松手时强制补发
+    curFocal = focal;
+    updateDialUI();
+    return;
+  }
+  dialLastApply = now;
+  applyFocal(focal);
+}
+focalDialSvg.addEventListener('pointerdown', (e) => {
+  if (!camReady){ showToast('请先打开相机'); return; }
+  dialDragging = true;
+  try { focalDialSvg.setPointerCapture(e.pointerId); } catch (err) {}
+  dialApply(dialEventToT(e), true);
+  e.preventDefault();
+});
+focalDialSvg.addEventListener('pointermove', (e) => {
+  if (dialDragging) dialApply(dialEventToT(e), false);
+});
+focalDialSvg.addEventListener('pointerup', (e) => {
+  if (!dialDragging) return;
+  dialDragging = false;
+  dialApply(dialEventToT(e), true);
+});
+focalDialSvg.addEventListener('pointercancel', () => { dialDragging = false; });
+
+/* ---- v3.3：超级防抖（陀螺仪电子防抖） ----
+   原理：陀螺仪角度经低通滤波后换算为取景裁切窗口的反向偏移；源画面放大约 1.12 倍
+   留出裁切边距，偏移钳制在边距内，永不露边。只在处理画布路径（useProcessed）下生效。
+   方向说明：偏移方向按常规竖持手机映射（gamma→横向，beta→纵向），需真机验证，
+   如方向反了只需把 stabOffX/stabOffY 的符号取反（见 onDeviceOrientation）。 */
+function stabEffective(){
+  return stabOn && stabListening && stabHasBase && camReady && useProcessed;
+}
+function getCropRect(vw, vh){
+  // 取景裁切窗口：数码变焦裁切 + 防抖裁切（防抖再放大约 1.12 倍并按陀螺仪偏移）
+  let sw = vw, sh = vh, sx = 0, sy = 0;
+  if (!zoomCap && curZoom > 1){
+    sw = vw / curZoom; sh = vh / curZoom;
+    sx = (vw - sw) / 2; sy = (vh - sh) / 2;
+  }
+  if (stabEffective()){
+    const cw = sw / STAB_CROP, ch = sh / STAB_CROP;
+    const mx = (sw - cw) / 2, my = (sh - ch) / 2;
+    const ox = Math.max(-mx, Math.min(mx, stabOffX * vw));
+    const oy = Math.max(-my, Math.min(my, stabOffY * vh));
+    sx = sx + mx + ox; sy = sy + my + oy;
+    sw = cw; sh = ch;
+  }
+  return { sx: sx, sy: sy, sw: sw, sh: sh };
+}
+function onDeviceOrientation(e){
+  if (e.beta == null || e.gamma == null) return;
+  if (!stabHasBase){
+    stabBaseBeta = e.beta; stabBaseGamma = e.gamma;
+    stabHasBase = true;
+    updateStabUI();
+  }
+  // 基线缓慢跟随（约 1.7 秒时间常数）：持续转动（摇镜头）会被吸收，只有快速抖动才补偿
+  stabBaseBeta += (e.beta - stabBaseBeta) * 0.01;
+  stabBaseGamma += (e.gamma - stabBaseGamma) * 0.01;
+  const rb = e.beta - stabBaseBeta, rg = e.gamma - stabBaseGamma;
+  stabRelBeta += (rb - stabRelBeta) * 0.2;
+  stabRelGamma += (rg - stabRelGamma) * 0.2;
+  // 角度→归一化偏移：按约 70° 横向视场换算；方向需真机验证，反了取反即可
+  const k = 1 / 70;
+  stabOffX = stabRelGamma * k;
+  stabOffY = -stabRelBeta * k;
+}
+function attachStab(silent){
+  // 接入陀螺仪：Android 可直接监听；iOS 需 requestPermission（必须在手势里调用）
+  const startListening = () => {
+    stabListening = true;
+    stabHasBase = false; stabRelBeta = 0; stabRelGamma = 0; stabOffX = 0; stabOffY = 0;
+    window.addEventListener('deviceorientation', onDeviceOrientation);
+    // 1.5 秒内收不到有效事件 → 视为无陀螺仪，提示并弹回关闭（不静默失败）
+    clearTimeout(stabCheckTimer);
+    stabCheckTimer = setTimeout(() => {
+      if (stabOn && !stabHasBase){
+        setStab(false);
+        showToast('当前设备/浏览器不支持陀螺仪');
+      }
+    }, 1500);
+    updateStabUI();
+    if (!silent) showToast('超级防抖已开启，视角略窄');
+  };
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().then(state => {
+      if (state === 'granted') startListening();
+      else { setStab(false); showToast('未获得陀螺仪权限，超级防抖未开启'); }
+    }).catch(() => { setStab(false); showToast('未获得陀螺仪权限，超级防抖未开启'); });
+  } else {
+    startListening();
+  }
+}
+function detachStab(){
+  window.removeEventListener('deviceorientation', onDeviceOrientation);
+  clearTimeout(stabCheckTimer);
+  stabListening = false; stabHasBase = false;
+  stabOffX = 0; stabOffY = 0;
+}
+function setStab(on){
+  if (on === stabOn){ updateStabUI(); return; }
+  if (on){
+    if (!('DeviceOrientationEvent' in window)){
+      showToast('当前设备/浏览器不支持陀螺仪');
+      updateStabUI();
+      return;
+    }
+    stabOn = true;
+    attachStab(false);
+  } else {
+    stabOn = false;
+    detachStab();
+    updateStabUI();
+  }
+  try { localStorage.setItem('zg-stab', stabOn ? '1' : '0'); } catch (e) {}
+}
+function updateStabUI(){
+  // 左上角 chip 本身即状态指示：金色填充为开，暗色为关
+  btnStab.classList.toggle('on', stabOn);
 }
 
 /* ---- 实时风格处理：视频 → 取景画布（应用风格滤镜）→ captureStream 供录制 ----
@@ -1271,7 +1551,7 @@ function startProcessing(){
       degradeToRaw('当前浏览器不支持实时风格处理，录像为原画');
       return;
     }
-    const vStream = viewCanvas.captureStream(30);
+    const vStream = viewCanvas.captureStream(selectedFps);
     const tracks = vStream.getVideoTracks().slice();
     camStream.getAudioTracks().forEach(t => tracks.push(t)); // 画布流只有视频，音频轨要从原流补
     procStream = new MediaStream(tracks);
@@ -1279,6 +1559,7 @@ function startProcessing(){
     procSlowFrames = 0;
     camScreen.classList.add('proc-on');
     updateFocalNote(); // 处理模式下数码变焦会进入录像，提示文案相应变化
+    updateStabUI(); // 处理路径恢复，防抖 chip 状态同步
     const loop = () => {
       if (!camReady || !useProcessed) return;
       drawProcessedFrame();
@@ -1299,12 +1580,9 @@ function drawProcessedFrame(){
   const t0 = performance.now();
   const ctx = procCtx;
   ctx.save();
-  // 数码变焦：裁切中央区域（与拍照快照同一逻辑）；光学变焦已在视频轨上生效
-  let sx = 0, sy = 0, sw = vw, sh = vh;
-  if (!zoomCap && curZoom > 1){
-    sw = vw / curZoom; sh = vh / curZoom;
-    sx = (vw - sw) / 2; sy = (vh - sh) / 2;
-  }
+  // 裁切窗口：数码变焦裁切 + 超级防抖裁切（与拍照快照同一逻辑）；光学变焦已在视频轨上生效
+  const rect = getCropRect(vw, vh);
+  const sx = rect.sx, sy = rect.sy, sw = rect.sw, sh = rect.sh;
   if (facing === 'user'){ ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
   const st = STYLES.find(s => s.id === camStyle) || STYLES[0];
   ctx.filter = (st && st.live) || 'none';
@@ -1341,13 +1619,16 @@ function degradeToRaw(msg){
   stopProcessing();
   applyVideoTransform(); // 降级后原始 video 可见，恢复镜像/数码变焦的 CSS 变换
   updateFocalNote(); // 降级后数码变焦不再进入录像，提示文案相应变化
+  updateStabUI(); // 处理路径关闭，防抖 chip 状态同步（未生效由下面的 toast 如实告知）
   if (camReady && camRecorder && !isRecording){
     // 录制器换回原始流：重建缓存（此前缓存的预录制片段会丢失）
     try { if (camRecorder.state !== 'inactive') camRecorder.stop(); } catch (e) {}
     camRecorder = null;
     startBuffering();
   }
-  showToast(msg || '当前设备录像无法实时带风格，已保存原画');
+  // 防抖只在处理路径下生效：降级为原画录制时如实告知，不假装在防抖
+  const base = msg || '当前设备录像无法实时带风格，已保存原画';
+  showToast(stabOn ? base + '；超级防抖未生效' : base);
 }
 
 /* ---- 模式切换 ---- */
@@ -1508,12 +1789,9 @@ function restartBuffering(){
 function takePhoto(){
   if (!camReady || camVideo.videoWidth === 0){ showToast('相机画面未就绪'); return; }
   const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
-  // 数码变焦时按同样倍率裁切中央区域，使照片与预览一致
-  let sw = vw, sh = vh, sx = 0, sy = 0;
-  if (!zoomCap && curZoom > 1){
-    sw = vw / curZoom; sh = vh / curZoom;
-    sx = (vw - sw) / 2; sy = (vh - sh) / 2;
-  }
+  // 裁切窗口：数码变焦 + 超级防抖（与实时预览同一逻辑），使照片与预览一致
+  const rect = getCropRect(vw, vh);
+  const sx = rect.sx, sy = rect.sy, sw = rect.sw, sh = rect.sh;
   const c = document.createElement('canvas');
   c.width = Math.round(sw); c.height = Math.round(sh);
   const ctx = c.getContext('2d');
@@ -1691,6 +1969,7 @@ document.addEventListener('keydown', (e) => {
 btnAgain.addEventListener('click', () => { camResult.classList.add('hidden'); });
 lastThumb.addEventListener('click', () => { if (hasResult) camResult.classList.remove('hidden'); });
 btnVoice.addEventListener('click', () => { voiceOn ? stopVoice() : startVoice(); });
+btnStab.addEventListener('click', () => { setStab(!stabOn); });
 
 btnBuffer.addEventListener('click', () => {
   const idx = BUFFER_OPTIONS.indexOf(bufferSecs);
@@ -1705,9 +1984,16 @@ document.getElementById('modeTabs').addEventListener('click', (e) => {
   setMode(b.dataset.mode);
 });
 
-document.getElementById('focalPill').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  applyFocal(parseInt(b.dataset.focal, 10));
+/* v3.3：帧率菜单（点 chip 开关菜单，点选项切换，点外面关闭） */
+btnFps.addEventListener('click', () => { fpsMenu.classList.toggle('hidden'); });
+fpsMenu.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-fps]'); if (!b) return;
+  setFps(parseInt(b.dataset.fps, 10));
+});
+document.addEventListener('click', (e) => {
+  if (!fpsMenu.classList.contains('hidden') && !e.target.closest('#fpsMenu') && !e.target.closest('#btnFps')){
+    fpsMenu.classList.add('hidden');
+  }
 });
 
 btnMore.addEventListener('click', () => moreSheet.classList.remove('hidden'));
@@ -1717,8 +2003,31 @@ moreSheet.addEventListener('click', (e) => {
   if (!item) return;
   moreSheet.classList.add('hidden');
   if (item.dataset.action === 'range'){ setRangeOn(!rangeOn); return; }
+  if (item.dataset.action === 'fullscreen'){ toggleFullscreen(); return; }
   switchView(item.dataset.goto);
 });
+
+/* ---- v3.4：全屏拍摄（隐藏浏览器上下栏） ---- */
+async function toggleFullscreen(){
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch (e) {
+    showToast('当前浏览器不支持全屏，可添加到主屏幕获得无栏体验');
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const fsItem = document.getElementById('fsItem');
+  if (!fsItem) return;
+  const on = !!document.fullscreenElement;
+  fsItem.querySelector('.nm').textContent = on ? '退出全屏' : '全屏';
+  fsItem.querySelector('.ds').textContent = on ? '恢复浏览器栏' : '隐藏浏览器栏';
+});
+// 不支持 Fullscreen API 的浏览器直接藏起该入口
+if (!document.fullscreenEnabled){
+  const fsItem = document.getElementById('fsItem');
+  if (fsItem) fsItem.classList.add('hidden');
+}
 
 /* ================= 光线 ================= */
 const CITIES = [
@@ -2565,6 +2874,9 @@ document.querySelectorAll('.tool-card .t-head').forEach(head => {
 document.body.classList.add('cam-active'); // 默认视图为相机，全屏取景
 renderLight();
 renderLibrary();
+updateFpsUI(); // 恢复上次选的帧率（默认 60fps）
+updateStabUI(); // 恢复防抖开关 chip 状态（陀螺仪待相机打开后自动接回）
+updateDialUI(); // 拨盘初始指向 24mm
 setInterval(() => {
   if (document.getElementById('view-light').classList.contains('active')) renderLight();
 }, 60000);
