@@ -493,7 +493,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v3.8 原型 · LifeHack</div>
+    <div class="ver">v3.9 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -1310,7 +1310,8 @@ function detectZoom(){
 
 function applyVideoTransform(){
   const mirror = facing === 'user' ? 'scaleX(-1) ' : '';
-  const scale = (!zoomCap && curZoom > 1) ? 'scale(' + curZoom + ')' : '';
+  // v3.9：拖动预览（previewDigital）时即使有光学变焦也用 CSS 放大预览，实现跟手变焦
+  const scale = ((!zoomCap || previewDigital) && curZoom > 1) ? 'scale(' + curZoom + ')' : '';
   camVideo.style.transform = (mirror + scale).trim();
 }
 
@@ -1325,12 +1326,18 @@ function applyFocal(focal){
     try {
       const p = vTrack.applyConstraints({ advanced: [{ zoom: z }] });
       if (p && p.then){
-        p.then(() => { curZoom = z; applyVideoTransform(); updateFocalNote(); })
-         .catch(() => applyDigitalZoom(want));
+        p.then(() => {
+          // v3.9：光学变焦落定后，等一帧再撤掉拖动预览，交接不断档
+          requestAnimationFrame(() => {
+            previewDigital = false; opticalFailed = false;
+            curZoom = z; applyVideoTransform(); updateFocalNote();
+          });
+        }).catch(() => { opticalFailed = true; previewDigital = true; applyDigitalZoom(want); });
       } else {
+        previewDigital = false; opticalFailed = false;
         curZoom = z; applyVideoTransform(); updateFocalNote();
       }
-    } catch (e) { applyDigitalZoom(want); }
+    } catch (e) { opticalFailed = true; previewDigital = true; applyDigitalZoom(want); }
   } else {
     applyDigitalZoom(want);
   }
@@ -1350,6 +1357,13 @@ function updateFocalNote(){
   if (want < 1 && curZoom >= 1){
     // 拨盘可连续选到 15–24mm 之间，文案用当前焦段而非固定写 15mm
     focalNote.textContent = Math.round(curFocal) + 'mm 需超广角镜头，当前设备不支持，已用最广视角';
+    return;
+  }
+  if (previewDigital && zoomCap){
+    // v3.9：拖动预览中或光学变焦失败后改用裁切放大时，文案如实说明
+    focalNote.textContent = opticalFailed
+      ? '数码变焦约 ' + curZoom.toFixed(1) + '× · 光学变焦不可用，已改用裁切放大'
+      : '变焦中 · 约 ' + curZoom.toFixed(1) + '×';
     return;
   }
   if (zoomCap){
@@ -1383,7 +1397,10 @@ function updateDialUI(){
   dialProgress.setAttribute('d', 'M 20 50 A 300 300 0 0 1 ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1));
   focalReadout.textContent = Math.round(curFocal) + 'mm';
 }
-let dialDragging = false, dialLastApply = 0;
+let dialDragging = false;
+// v3.9：previewDigital = 拖动预览（或光学失败后的备用裁切），让画面即时跟手；
+// opticalFailed = 光学变焦指令失败过，文案如实说明
+let previewDigital = false, opticalFailed = false;
 function dialEventToT(e){
   const rect = focalDialSvg.getBoundingClientRect();
   const x = (e.clientX - rect.left) / rect.width * 280;
@@ -1397,15 +1414,20 @@ function dialEventToT(e){
   return t;
 }
 function dialApply(t, force){
+  // v3.9：原生相机式变焦——拖动时只改预览（数码裁切 GPU 即时跟手），
+  // 不发光学变焦指令；松手/点按时先给即时预览，再发一次光学指令落定。
   const focal = tToFocal(t);
-  const now = performance.now();
-  if (!force && now - dialLastApply < 120){
-    // 拖动节流：UI 实时跟手，变焦指令最多 120ms 发一次，松手时强制补发
-    curFocal = focal;
-    updateDialUI();
-    return;
+  curFocal = focal;
+  updateDialUI();
+  if (!camReady){ updateFocalNote(); return; }
+  const want = focal / 24;
+  if (zoomCap){
+    previewDigital = true;
+    curZoom = Math.min(10, Math.max(1, want));
+    applyVideoTransform();
+    updateFocalNote();
+    if (!force) return; // 拖动中：预览已跟手，不发光学指令
   }
-  dialLastApply = now;
   applyFocal(focal);
 }
 focalDialSvg.addEventListener('pointerdown', (e) => {
@@ -1423,7 +1445,11 @@ focalDialSvg.addEventListener('pointerup', (e) => {
   dialDragging = false;
   dialApply(dialEventToT(e), true);
 });
-focalDialSvg.addEventListener('pointercancel', () => { dialDragging = false; });
+focalDialSvg.addEventListener('pointercancel', () => {
+  if (!dialDragging) return;
+  dialDragging = false;
+  dialApply(focalToT(curFocal), true); // 取消也按当前焦段落定，避免预览一直挂着
+});
 
 /* ---- v3.3：超级防抖（陀螺仪电子防抖） ----
    原理：陀螺仪角度经低通滤波后换算为取景裁切窗口的反向偏移；源画面放大约 1.12 倍
@@ -1436,7 +1462,7 @@ function stabEffective(){
 function getCropRect(vw, vh){
   // 取景裁切窗口：数码变焦裁切 + 防抖裁切（防抖再放大约 1.12 倍并按陀螺仪偏移）
   let sw = vw, sh = vh, sx = 0, sy = 0;
-  if (!zoomCap && curZoom > 1){
+  if ((!zoomCap || previewDigital) && curZoom > 1){
     sw = vw / curZoom; sh = vh / curZoom;
     sx = (vw - sw) / 2; sy = (vh - sh) / 2;
   }
