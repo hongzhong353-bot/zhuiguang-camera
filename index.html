@@ -528,7 +528,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v4.3 原型 · LifeHack</div>
+    <div class="ver">v4.4 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -2075,6 +2075,7 @@ function updateBufferUI(){
   trimRing();
   const show = camReady && curMode === 'prerecord'; // v3.7：只有预录模式有滚动缓存
   bufferBadge.classList.toggle('hidden', !show);
+  btnBuffer.classList.toggle('hidden', curMode !== 'prerecord'); // v4.4：顶栏“预录 30s”设置 chip 只在预录模式显示
   // v3.5：徽标按计时显示（从开始缓存起计时，上限为所设预录秒数），不再直接显示数据块时间戳跨度——
   // Android 按关键帧间隔出块（约 3 秒一块），块跨度会在 23–31 秒之间来回跳，看着像坏了；计时显示稳步涨到设定值后保持
   if (show){
