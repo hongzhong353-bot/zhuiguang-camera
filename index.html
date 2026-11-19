@@ -132,14 +132,15 @@
     padding:5px 12px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
-  /* v4.2：悬浮美颜按钮（取景器右侧边缘、竖直居中；点一下直达美颜面板，不用进三个点） */
+  /* v4.2：悬浮美颜按钮（取景器右侧边缘、竖直居中；点一下直达美颜面板，不用进三个点）
+     v4.3：用户说 46px 太大，缩到 38px（小于翻转按钮的 44px），图标相应缩小，位置与金色高亮逻辑不变 */
   .beauty-fab{
     position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:5;
-    width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.25);cursor:pointer;
+    width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);cursor:pointer;
     background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
-  .beauty-fab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .beauty-fab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .beauty-fab:active{background:rgba(255,255,255,.25)}
   /* 美颜开启中（任一滑杆 > 0）：金色高亮，一眼看出开没开；关闭时普通深色态 */
   .beauty-fab.on{background:var(--gold);color:#1a1508;border-color:rgba(245,197,24,.6);box-shadow:0 0 14px rgba(245,197,24,.45)}
@@ -309,6 +310,12 @@
   .result-sheet video,.result-sheet img.preview{width:100%;border-radius:14px;background:#000;display:block;max-height:44vh;object-fit:contain}
   .result-sheet .rs-note{font-size:.8rem;color:rgba(255,255,255,.7);line-height:1.6;margin-top:10px}
   .result-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  /* v4.3：去瑕疵（拍照结果页）——点按修复，修复作用于照片本身 */
+  .heal-bar{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12)}
+  .heal-hint{font-size:.82rem;color:rgba(255,255,255,.85);line-height:1.6;margin:0 0 10px}
+  #resultImg.healing{cursor:crosshair;touch-action:manipulation}
+  .heal-ring{position:absolute;width:56px;height:56px;margin:-28px 0 0 -28px;border:2px solid var(--gold);border-radius:50%;pointer-events:none;z-index:13;animation:healping .6s ease-out forwards}
+  @keyframes healping{0%{opacity:1;transform:scale(.7)}100%{opacity:0;transform:scale(1.15)}}
   .err-box{
     position:absolute;left:14px;right:14px;top:calc(110px + env(safe-area-inset-top));z-index:6;
     padding:14px 16px;border-radius:14px;border:1px solid rgba(229,72,77,.4);
@@ -521,7 +528,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v4.2 原型 · LifeHack</div>
+    <div class="ver">v4.3 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -698,9 +705,19 @@
         <div class="result-sheet hidden" id="camResult">
           <video id="resultVideo" controls playsinline class="hidden"></video>
           <img id="resultImg" class="preview hidden" alt="拍摄的照片">
+          <div class="heal-ring hidden" id="healRing"></div>
           <div class="result-actions">
             <a class="btn small" id="btnDownload" href="#" download>下载</a>
+            <button class="btn small ghost hidden" id="btnHeal" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)">去瑕疵</button>
             <button class="btn small ghost" id="btnAgain" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)">继续拍摄</button>
+          </div>
+          <div class="heal-bar hidden" id="healBar">
+            <p class="heal-hint">点按照片上的痣、痘痘或瑕疵处进行修复，每次修一处（取周围肤色羽化填充）。修复会保存到这张照片里。</p>
+            <div class="result-actions" style="margin-top:0">
+              <button class="btn small ghost" id="btnHealUndo" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)">撤销上一次</button>
+              <button class="btn small ghost" id="btnHealReset" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)">恢复原图</button>
+              <button class="btn small" id="btnHealDone">完成</button>
+            </div>
           </div>
           <p class="rs-note" id="resultNote"></p>
         </div>
@@ -1074,6 +1091,12 @@ const resultVideo = document.getElementById('resultVideo');
 const resultImg = document.getElementById('resultImg');
 const btnDownload = document.getElementById('btnDownload');
 const btnAgain = document.getElementById('btnAgain');
+const btnHeal = document.getElementById('btnHeal'); // v4.3：去瑕疵入口（仅照片）
+const healBar = document.getElementById('healBar');
+const btnHealUndo = document.getElementById('btnHealUndo');
+const btnHealReset = document.getElementById('btnHealReset');
+const btnHealDone = document.getElementById('btnHealDone');
+const healRing = document.getElementById('healRing');
 const resultNote = document.getElementById('resultNote');
 const lastThumb = document.getElementById('lastThumb');
 const btnFlip = document.getElementById('btnFlip');
@@ -1758,18 +1781,22 @@ function boxBlurSeparable(src, w, h, radius){
 }
 
 function skinWeight(r, g, b){
-  // 肤色权重 0..1：色相在肤色带（中心 28°，与 v4.0 佳能人像同一色相带）+ R>G≥B +
-  // 中等亮度与饱和度；灰、太暗、太亮、太艳都不是肤色。复用 v4.0 的 hueOf/hueBand。
+  // 肤色权重 0..1：色相在肤色带 + 通道顺序 + 中等亮度与饱和度；灰、太暗、太亮、太艳都不是肤色。复用 v4.0 的 hueOf/hueBand。
+  // v4.3：v4.1 的门太严，室内黄光下肤色色相往黄偏移、亮白肤色饱和度偏低，命中像素太少，
+  // 用户感觉磨皮没效果。放宽四处（仍以肤色带为中心）：色相带中心 28°→30°、宽度 35→45
+  // （黄偏肤色仍有分量）；亮度 40–235→30–245（暗光深肤色、亮白肤色）；饱和度下限 0.12→0.08
+  // （亮白肤色通过，灰墙仍被排除——灰的饱和度约 0.02–0.06）；通道顺序容忍 ±8（荧光灯/LED
+  // 的轻微绿偏、蓝偏下肤色仍能命中）。
   const h = hueOf(r, g, b);
   if (h < 0) return 0;
-  const w = hueBand(h, 28, 35);
+  const w = hueBand(h, 30, 45);
   if (w <= 0) return 0;
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
   const l = 0.299 * r + 0.587 * g + 0.114 * b;
-  if (l < 40 || l > 235) return 0;
+  if (l < 30 || l > 245) return 0;
   const sat = mx === 0 ? 0 : (mx - mn) / mx;
-  if (sat < 0.12 || sat > 0.75) return 0;
-  if (!(r > g && g >= b)) return 0;
+  if (sat < 0.08 || sat > 0.75) return 0;
+  if (!(r >= g - 8 && g >= b - 8)) return 0;
   return w;
 }
 
@@ -1782,7 +1809,11 @@ function applyBeautyToPhoto(ctx, w, h){
   const d = imgData.data;
   const blurSharp = sharp > 0 ? boxBlurSeparable(d, w, h, 1) : null;
   const blurSkin = smooth > 0 ? boxBlurSeparable(d, w, h, 2) : null;
-  const sK = smooth / 100;      // 磨皮强度 0..1
+  const sK = smooth / 100;      // 磨皮强度 0..1（线性，暖粉推送用）
+  // v4.3：磨皮混合改开方曲线——v4.1 线性时默认 30 混合只有约 0.17，用户感觉不出来；
+  // 开方后默认 30 混合约 0.30（sqrt(0.3)×0.55），拉满仍是上限 0.55（不塑料），0 时仍为 0。
+  // 用曲线不用改默认值，是因为已存的 localStorage 值（30）也能直接受益。
+  const sBlend = Math.sqrt(sK);
   const uK = sharp / 100 * 0.6; // 锐化强度 0..0.6（宁弱勿过：半径 1 的非锐化掩模，0.6 已够硬，再高易出白边）
   const liftT = bright / 100 * 0.15; // 提亮：向白提亮系数 0..0.15（暗部多提、高光不动，永不裁切高光）
   for (let i = 0; i < d.length; i += 4){
@@ -1792,7 +1823,7 @@ function applyBeautyToPhoto(ctx, w, h){
       // 磨皮：只平滑肤色带；混合上限 0.55——保留 45% 原始质感，绝不磨成塑料皮；
       // 同时肤色往暖粉推（佳能人像方向：去蜡黄、显气色），
       // 调法与 v4.0 佳能人像风格一致（G 降、B 升 = 往品红；肤色带饱和 +12%；肤色微亮）
-      const m = skinW * sK * 0.55;
+      const m = skinW * sBlend * 0.55;
       r += (blurSkin[i] - r) * m;
       g += (blurSkin[i + 1] - g) * m;
       b += (blurSkin[i + 2] - b) * m;
@@ -2069,6 +2100,7 @@ function toggleRecord(){
     recTimerChip.classList.remove('hidden');
     recTimerChip.textContent = '00:00';
     camResult.classList.add('hidden');
+    resetHealState(); // v4.3：开始录像、结果面板收起，去瑕疵状态一起复位
     recTimerId = setInterval(() => { recTimerChip.textContent = fmtTimer(Date.now() - recStartTime); }, 500);
     showToast(curMode === 'video' ? '开始录像' : '开始录像（含 ' + chunksSeconds(savedChunks) + ' 秒预录制）');
   } else {
@@ -2120,6 +2152,7 @@ function finishRecording(){
   camResult.classList.remove('hidden');
   hasResult = true;
   setVideoThumb(resultVideo);
+  resetHealState(); // v4.3：视频没有照片画布，去瑕疵入口不显示
   saveClip({ kind: 'video', blob: blob, name: fname, seconds: totalSec, mode: MODE_NAME[curMode], style: procDegraded ? '原画' : stName });
   recTimerChip.textContent = '00:00';
   restartBuffering();
@@ -2172,9 +2205,180 @@ function takePhoto(){
     camResult.classList.remove('hidden');
     hasResult = true;
     setThumbImg(url);
-    saveClip({ kind: 'photo', blob: blob, name: fname, seconds: 0, mode: MODE_NAME[curMode], style: stName });
+    // v4.3：去瑕疵——留住这张照片的画布与原图快照，记下作品库记录 id，显示去瑕疵入口
+    resetHealState();
+    healCanvas = c; healCtx = ctx;
+    healBase = ctx.getImageData(0, 0, c.width, c.height);
+    healUrl = url; healName = fname;
+    healClipId = saveClip({ kind: 'photo', blob: blob, name: fname, seconds: 0, mode: MODE_NAME[curMode], style: stName });
+    btnHeal.classList.remove('hidden');
   }, 'image/jpeg', 0.92);
 }
+
+/* ---- v4.3：去瑕疵（照片功能，实时视频不做） ----
+   原理：点按处取周围肤色羽化填充——先拿环带平均肤色盖住瑕疵中心，再对局部区域做强
+   模糊（保留局部色调渐变），最后用羽化圆盘掩膜贴回原图。修复作用于照片画布本身，
+   之后重新编码，预览、下载链接、缩略图、作品库记录四处一起更新。
+   撤销按区域快照（每步只存修复的那块区域，不存整图）；恢复原图用拍照时的整图快照。 */
+let healCanvas = null, healCtx = null, healBase = null;
+let healUndoStack = [];
+let healMode = false, healTouched = false;
+let healClipId = null, healName = '', healUrl = null;
+const HEAL_UNDO_MAX = 12;
+
+function resetHealState(){
+  // 结果面板关掉或新拍一张时调用：退出模式、释放快照（原图快照约 8MB，不能一直留着）
+  healMode = false; healTouched = false;
+  healBar.classList.add('hidden');
+  resultImg.classList.remove('healing');
+  btnHeal.classList.add('hidden');
+  healCanvas = null; healCtx = null; healBase = null;
+  healUndoStack = [];
+  healClipId = null; healName = ''; healUrl = null;
+}
+function enterHealMode(){
+  if (!healCanvas){ showToast('请先拍一张照片'); return; }
+  healMode = true;
+  healBar.classList.remove('hidden');
+  resultImg.classList.add('healing');
+  btnHeal.classList.add('hidden');
+  showToast('点按照片上的瑕疵处修复');
+}
+function exitHealMode(){
+  healMode = false;
+  healBar.classList.add('hidden');
+  resultImg.classList.remove('healing');
+  if (healCanvas) btnHeal.classList.remove('hidden');
+}
+function imgPointToCanvas(clientX, clientY){
+  // 点按位置（屏幕坐标）→ 照片画布坐标。resultImg 是 object-fit:contain，要先算
+  // 实际显示出来的图片矩形（扣除黑边），再按显示尺寸换算；点在黑边上返回 null。
+  const rect = resultImg.getBoundingClientRect();
+  const nw = resultImg.naturalWidth, nh = resultImg.naturalHeight;
+  if (!nw || !nh || !healCanvas) return null;
+  const scale = Math.min(rect.width / nw, rect.height / nh);
+  const dw = nw * scale, dh = nh * scale;
+  const ox = (rect.width - dw) / 2, oy = (rect.height - dh) / 2;
+  const px = clientX - rect.left - ox, py = clientY - rect.top - oy;
+  if (px < 0 || py < 0 || px > dw || py > dh) return null;
+  const k = healCanvas.width / dw; // 显示 px → 画布 px（contain 下横纵比例相同）
+  return { x: px * k, y: py * k, r: 28 * k }; // 修复半径固定 28px（按显示尺寸换算）
+}
+function showHealRing(clientX, clientY){
+  // 点按处短暂显示一个金色圆环（半径与修复半径一致），反馈修了哪
+  const sr = camResult.getBoundingClientRect();
+  healRing.style.left = (clientX - sr.left) + 'px';
+  healRing.style.top = (clientY - sr.top + camResult.scrollTop) + 'px';
+  healRing.classList.remove('hidden');
+  healRing.style.animation = 'none';
+  void healRing.offsetWidth; // 重启动画
+  healRing.style.animation = '';
+  clearTimeout(showHealRing._t);
+  showHealRing._t = setTimeout(() => healRing.classList.add('hidden'), 650);
+}
+function healSpot(cx, cy, r){
+  const w = healCanvas.width, h = healCanvas.height;
+  const x0 = Math.max(0, Math.floor(cx - 2 * r)), y0 = Math.max(0, Math.floor(cy - 2 * r));
+  const x1 = Math.min(w, Math.ceil(cx + 2 * r)), y1 = Math.min(h, Math.ceil(cy + 2 * r));
+  const rw = x1 - x0, rh = y1 - y0;
+  if (rw < 4 || rh < 4) return false;
+  // 撤销快照：只存修复前这块区域
+  healUndoStack.push({ x: x0, y: y0, img: healCtx.getImageData(x0, y0, rw, rh) });
+  if (healUndoStack.length > HEAL_UNDO_MAX) healUndoStack.shift();
+  const region = healCtx.getImageData(x0, y0, rw, rh);
+  const d = region.data;
+  const orig = new Uint8ClampedArray(d); // 原始区域（贴回时用）
+  const ccx = cx - x0, ccy = cy - y0;
+  // 1）环带平均肤色：取修复圆外 1.3r–2.0r 的像素平均（环带里基本没有瑕疵本身）
+  let sr = 0, sg = 0, sb = 0, cnt = 0;
+  for (let y = 0; y < rh; y++){
+    for (let x = 0; x < rw; x++){
+      const dd = Math.hypot(x - ccx, y - ccy) / r;
+      if (dd >= 1.3 && dd <= 2.0){
+        const i = (y * rw + x) * 4;
+        sr += orig[i]; sg += orig[i + 1]; sb += orig[i + 2]; cnt++;
+      }
+    }
+  }
+  if (cnt === 0){ // 贴边点按、环带几乎没有像素时退回整块区域平均
+    for (let i = 0; i < orig.length; i += 4){ sr += orig[i]; sg += orig[i + 1]; sb += orig[i + 2]; cnt++; }
+  }
+  const ar = sr / cnt, ag = sg / cnt, ab = sb / cnt;
+  // 2）先拿环带肤色盖住瑕疵中心（深色痣直接模糊会留下暗晕，先盖掉）
+  for (let y = 0; y < rh; y++){
+    for (let x = 0; x < rw; x++){
+      if (Math.hypot(x - ccx, y - ccy) < 0.9 * r){
+        const i = (y * rw + x) * 4;
+        d[i] = ar; d[i + 1] = ag; d[i + 2] = ab;
+      }
+    }
+  }
+  // 3）整块区域强模糊（保留局部色调渐变，不是一块死色）
+  const blurR = Math.max(4, Math.min(40, Math.round(r / 4)));
+  const blurred = boxBlurSeparable(d, rw, rh, blurR);
+  // 4）羽化圆盘贴回：中心全量、0.55r 外平滑过渡到边缘 0（smoothstep），看不出接缝
+  for (let y = 0; y < rh; y++){
+    for (let x = 0; x < rw; x++){
+      const dd = Math.hypot(x - ccx, y - ccy) / r;
+      if (dd >= 1) continue;
+      const t = Math.max(0, Math.min(1, (dd - 0.55) / 0.45));
+      const a = 1 - t * t * (3 - 2 * t);
+      const i = (y * rw + x) * 4;
+      d[i] = orig[i] * (1 - a) + blurred[i] * a;
+      d[i + 1] = orig[i + 1] * (1 - a) + blurred[i + 1] * a;
+      d[i + 2] = orig[i + 2] * (1 - a) + blurred[i + 2] * a;
+    }
+  }
+  healCtx.putImageData(region, x0, y0);
+  healTouched = true;
+  return true;
+}
+function commitHeal(){
+  // 修复作用于保存的照片本身：重新编码，预览、下载链接、缩略图、作品库记录一起更新
+  if (!healCanvas) return;
+  healCanvas.toBlob((blob) => {
+    if (!blob){ showToast('保存失败，请重试'); return; }
+    if (healUrl) URL.revokeObjectURL(healUrl);
+    healUrl = URL.createObjectURL(blob);
+    resultImg.src = healUrl;
+    btnDownload.href = healUrl;
+    setThumbImg(healUrl);
+    if (healTouched && resultNote.textContent.indexOf('去瑕疵') < 0){
+      resultNote.textContent += '已去瑕疵。';
+    }
+    if (healClipId) updateClipBlob(healClipId, blob);
+  }, 'image/jpeg', 0.92);
+}
+function healUndo(){
+  const step = healUndoStack.pop();
+  if (!step){ showToast('没有可撤销的步骤'); return; }
+  healCtx.putImageData(step.img, step.x, step.y);
+  if (healUndoStack.length === 0){
+    healTouched = false;
+    resultNote.textContent = resultNote.textContent.replace('已去瑕疵。', '');
+  }
+  commitHeal();
+}
+function healRestore(){
+  if (!healBase){ return; }
+  healCtx.putImageData(healBase, 0, 0);
+  healUndoStack = [];
+  healTouched = false;
+  resultNote.textContent = resultNote.textContent.replace('已去瑕疵。', '');
+  commitHeal();
+  showToast('已恢复原图');
+}
+resultImg.addEventListener('click', (ev) => {
+  if (!healMode || !healCanvas) return;
+  const p = imgPointToCanvas(ev.clientX, ev.clientY);
+  if (!p) return; // 点在图片黑边上
+  showHealRing(ev.clientX, ev.clientY);
+  if (healSpot(p.x, p.y, p.r)) commitHeal();
+});
+btnHeal.addEventListener('click', enterHealMode);
+btnHealDone.addEventListener('click', exitHealMode);
+btnHealUndo.addEventListener('click', healUndo);
+btnHealReset.addEventListener('click', healRestore);
 
 /* ---- 缩略图 ---- */
 function setThumbImg(url){
@@ -2319,7 +2523,7 @@ document.addEventListener('keydown', (e) => {
     if (!btnFlip.classList.contains('hidden')) flipCamera();
   }
 });
-btnAgain.addEventListener('click', () => { camResult.classList.add('hidden'); });
+btnAgain.addEventListener('click', () => { camResult.classList.add('hidden'); resetHealState(); }); // v4.3：面板关了，去瑕疵状态一起复位
 lastThumb.addEventListener('click', () => { if (hasResult) camResult.classList.remove('hidden'); });
 btnVoice.addEventListener('click', () => { voiceOn ? stopVoice() : startVoice(); });
 btnStab.addEventListener('click', () => { setStab(!stabOn); });
@@ -3103,6 +3307,21 @@ function saveClip(info){
     req.onsuccess = () => { renderLibrary(); };
     req.onerror = () => { showToast('本地保存失败，请直接点下载'); };
   }).catch(() => { showToast('本地保存失败，请直接点下载'); });
+  return rec.id; // v4.3：去瑕疵要更新同一条记录的照片，返回 id 供调用方记下
+}
+/* v4.3：去瑕疵后更新作品库里同一条记录的照片（原地替换 blob，不产生新记录）。 */
+function updateClipBlob(id, blob){
+  if (!window.indexedDB) return;
+  libTx('readwrite').then(store => {
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const rec = getReq.result;
+      if (!rec) return;
+      rec.blob = blob; rec.size = blob.size;
+      const putReq = store.put(rec);
+      putReq.onsuccess = () => renderLibrary();
+    };
+  }).catch(() => {});
 }
 function getAllClips(){
   return libTx('readonly').then(store => new Promise((resolve, reject) => {
