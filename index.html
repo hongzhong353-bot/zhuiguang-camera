@@ -257,7 +257,7 @@
   /* 更多面板（底部弹出） */
   .more-sheet{
     position:absolute;left:0;right:0;bottom:0;z-index:12;
-    background:rgba(28,25,20,.92);
+    background:#1c1914; /* v3.5：改实色底，动画过程中也不透出下面的风格条/模式栏 */
     -webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
     border-radius:24px 24px 0 0;padding:14px 18px calc(20px + env(safe-area-inset-bottom));
     animation:sheetup .25s ease;
@@ -492,7 +492,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v3.4 原型 · LifeHack</div>
+    <div class="ver">v3.5 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -1058,7 +1058,7 @@ let ringChunks = [];
 let savedChunks = [];
 let isRecording = false;
 let expectFinish = false;
-let recStartTime = 0, recTimerId = null, bufTimerId = null;
+let recStartTime = 0, recTimerId = null, bufTimerId = null, bufStartTime = 0;
 let camMime = '';
 let camReady = false;
 let curMode = 'prerecord'; // prerecord | photo | video | portrait | landscape
@@ -1680,6 +1680,7 @@ function startBuffering(){
   camRecorder.start(1000); // 每 1 秒一个数据块
   // 立即 flush 一次，尽快拿到容器头（该块几乎不含画面内容）
   setTimeout(() => { try { camRecorder.requestData(); } catch (e) {} }, 120);
+  bufStartTime = Date.now(); // v3.5：缓存徽标改按计时显示，起点记在这里
   bufTimerId = setInterval(updateBufferUI, 500);
   updateBufferUI();
 }
@@ -1703,7 +1704,12 @@ function updateBufferUI(){
   trimRing();
   const show = camReady && (curMode === 'prerecord' || curMode === 'portrait' || curMode === 'landscape');
   bufferBadge.classList.toggle('hidden', !show);
-  if (show) bufferText.textContent = '正在缓存 ' + chunksSeconds(ringChunks) + ' 秒';
+  // v3.5：徽标按计时显示（从开始缓存起计时，上限为所设预录秒数），不再直接显示数据块时间戳跨度——
+  // Android 按关键帧间隔出块（约 3 秒一块），块跨度会在 23–31 秒之间来回跳，看着像坏了；计时显示稳步涨到设定值后保持
+  if (show){
+    const elapsed = bufStartTime ? Math.floor((Date.now() - bufStartTime) / 1000) : 0;
+    bufferText.textContent = '正在缓存 ' + Math.min(elapsed, bufferSecs) + ' 秒';
+  }
 }
 
 function onShutter(){
@@ -2010,8 +2016,16 @@ moreSheet.addEventListener('click', (e) => {
 /* ---- v3.4：全屏拍摄（隐藏浏览器上下栏） ---- */
 async function toggleFullscreen(){
   try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen();
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen();
+      // v3.5：进全屏后锁定当前方向，防止 vivo 浏览器首次全屏时莫名翻成横屏；
+      // 锁定的是当前方向（竖着进就锁竖屏、横着进就锁横屏），不支持锁定的设备静默忽略
+      try {
+        if (screen.orientation && screen.orientation.lock) await screen.orientation.lock(screen.orientation.type);
+      } catch (e) {}
+    }
   } catch (e) {
     showToast('当前浏览器不支持全屏，可添加到主屏幕获得无栏体验');
   }
@@ -2022,6 +2036,10 @@ document.addEventListener('fullscreenchange', () => {
   const on = !!document.fullscreenElement;
   fsItem.querySelector('.nm').textContent = on ? '退出全屏' : '全屏';
   fsItem.querySelector('.ds').textContent = on ? '恢复浏览器栏' : '隐藏浏览器栏';
+  // v3.5：退出全屏（无论点按钮还是系统手势）都解除方向锁定
+  if (!on && screen.orientation && screen.orientation.unlock){
+    try { screen.orientation.unlock(); } catch (e) {}
+  }
 });
 // 不支持 Fullscreen API 的浏览器直接藏起该入口
 if (!document.fullscreenEnabled){
