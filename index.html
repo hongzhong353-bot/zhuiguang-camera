@@ -116,7 +116,7 @@
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .voice-note{
-    position:absolute;top:calc(52px + env(safe-area-inset-top));left:0;right:0;z-index:5;
+    position:absolute;top:calc(92px + env(safe-area-inset-top));left:0;right:0;z-index:5;
     text-align:center;font-size:.72rem;color:rgba(255,255,255,.85);pointer-events:none;
     text-shadow:0 1px 3px rgba(0,0,0,.8);
   }
@@ -217,10 +217,12 @@
   }
   .style-card.on{border-color:#f5c518;background:rgba(245,197,24,.16)}
   /* v4.7：风格条可收起——默认收起，只留一个风格开关 chip（显示当前风格），取景界面干净；
-     点一下展开风格条，再点收起；展开时开关移到风格条上方。桌面端侧栏常驻，不用开关。 */
+     点一下展开风格条，再点收起；展开时开关移到风格条上方。桌面端侧栏常驻，不用开关。
+     v4.8：收起状态的开关原来在 144px，正好压在变焦滑条轨道上、盖住 50/85 刻度；移到 252px，
+     拨盘（150–222px）与变焦说明行（226px）上方，三者互不遮挡。 */
   .style-toggle{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(144px + env(safe-area-inset-bottom));z-index:6;
+    bottom:calc(252px + env(safe-area-inset-bottom));z-index:6;
     border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.45);color:#fff;
     font-size:.78rem;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
@@ -341,20 +343,56 @@
     background:rgba(60,10,10,.85);color:#ffd9d9;font-size:.85rem;line-height:1.6;
   }
   .err-box b{color:#fff}
+  /* v4.8：语音提示行下移到 92px——原来 52px 与缓存徽标（56px）同高，缓存进度会压住提示文字；
+     正在听指示随之下移到 130px（提示两行约 36px + 间隙），识别到的字再往下到 168px，三行互不遮挡 */
   .voice-indicator{
     position:absolute;left:50%;transform:translateX(-50%);
-    top:calc(94px + env(safe-area-inset-top));z-index:5;
+    top:calc(130px + env(safe-area-inset-top));z-index:5;
     display:flex;align-items:center;gap:8px;
     background:rgba(0,0,0,.55);color:#fff;font-size:.8rem;padding:7px 14px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .voice-indicator .mic-dot{width:9px;height:9px;border-radius:50%;background:#4caf50;animation:pulse 1s infinite}
+  /* v4.8：识别到的字实时显示（“听到：开始录像”），语音不好使时一眼看出麦克风有没有听到 */
+  .voice-heard{
+    position:absolute;left:50%;transform:translateX(-50%);
+    top:calc(168px + env(safe-area-inset-top));z-index:5;
+    background:rgba(0,0,0,.55);color:#f5c518;font-size:.78rem;padding:6px 14px;border-radius:999px;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    max-width:92%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
   .cam-toast{
     position:absolute;left:50%;transform:translateX(-50%);
     bottom:calc(400px + env(safe-area-inset-bottom));z-index:8; /* v4.7：原 330px 与变焦说明行同高，提示会盖住读数；上移到 400px，只压取景画面，不盖任何读数 */
     background:rgba(0,0,0,.7);color:#fff;font-size:.82rem;padding:9px 18px;border-radius:999px;
-    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;
+    /* v4.8：长提示允许换行（原来 nowrap，超过屏宽会被裁掉） */
+    white-space:normal;max-width:88%;text-align:center;
   }
+
+  /* ---- v4.8：全屏相册（点左下角缩略图打开；网格浏览，点一张全屏看，左右滑切换，可下载/删除） ---- */
+  .album-view{position:fixed;inset:0;z-index:30;background:#000;display:flex;flex-direction:column}
+  .album-head{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;color:#fff}
+  .album-back{border:none;background:rgba(255,255,255,.12);color:#fff;font-size:1.3rem;width:38px;height:38px;border-radius:50%;cursor:pointer;flex:0 0 auto}
+  .album-title{font-size:1rem;font-weight:700}
+  .album-count{margin-left:auto;font-size:.8rem;color:rgba(255,255,255,.6)}
+  .album-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:0 2px calc(10px + env(safe-area-inset-bottom));align-content:start}
+  .album-cell{position:relative;aspect-ratio:1;overflow:hidden;background:#1a1a1a;cursor:pointer}
+  .album-cell img,.album-cell video{width:100%;height:100%;object-fit:cover;display:block}
+  .album-cell .ac-badge{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:.62rem;padding:2px 6px;border-radius:999px}
+  .album-empty{flex:1;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);font-size:.85rem;padding:24px;text-align:center}
+  .album-viewer{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;z-index:2}
+  .album-viewer-top{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 12px 8px;color:#fff}
+  .album-viewer-top .album-back{width:auto;height:38px;border-radius:999px;padding:0 16px;font-size:.9rem}
+  .album-viewer-pos{font-size:.8rem;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums}
+  .album-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .album-stage img,.album-stage video{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  .album-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .album-prev{left:10px}
+  .album-next{right:10px}
+  .album-bar{padding:10px 14px calc(16px + env(safe-area-inset-bottom));color:#fff}
+  .album-info{font-size:.78rem;color:rgba(255,255,255,.75);line-height:1.5;margin-bottom:10px;word-break:break-all}
+  .album-actions{display:flex;gap:10px}
 
   /* ---- 通用控件（光线 / 工具视图使用） ---- */
   .pills{display:flex;gap:6px}
@@ -547,7 +585,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v4.7 原型 · LifeHack</div>
+    <div class="ver">v4.8 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -588,6 +626,7 @@
         <div class="vf-overlay hidden" id="bufferBadge"><span class="vf-dot"></span><span id="bufferText">已缓存 0 秒 / 30 秒</span></div>
         <div class="rec-timer-chip hidden" id="recTimerChip">00:00</div>
         <div class="voice-indicator hidden" id="voiceIndicator"><span class="mic-dot"></span>正在听…</div>
+        <div class="voice-heard hidden" id="voiceHeard"></div>
         <div class="cam-toast hidden" id="camToast"></div>
 
         <!-- v4.2：悬浮美颜按钮（相机未打开时隐藏；点一下直达美颜面板，与更多里的入口开同一个面板） -->
@@ -631,12 +670,13 @@
 
         <div class="glass err-box hidden" id="camError" style="padding:14px 16px"></div>
 
-        <!-- v4.7 扁平变焦滑条（相机未打开时隐藏；横向直轨，拖动滑块连续变焦，对数映射，刻度吸附；上限 250mm） -->
+        <!-- v4.7 扁平变焦滑条（相机未打开时隐藏；横向直轨，拖动滑块连续变焦，对数映射，刻度吸附；上限 250mm）
+             v4.8：圆点改小（r 11→8，渲染约 23px）、轨道变细；触控带不变，小圆点照样好拖 -->
         <div class="focal-dial hidden" id="focalDial">
           <div class="fd-readout" id="focalReadout">24mm</div>
           <svg id="focalDialSvg" viewBox="0 0 280 44" aria-label="变焦滑条">
-            <path d="M 20 22 L 260 22" stroke="rgba(255,255,255,.25)" stroke-width="3" fill="none" stroke-linecap="round"/>
-            <path id="dialProgress" d="M 20 22 L 60.1 22" stroke="#f5c518" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M 20 22 L 260 22" stroke="rgba(255,255,255,.25)" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path id="dialProgress" d="M 20 22 L 60.1 22" stroke="#f5c518" stroke-width="2" fill="none" stroke-linecap="round"/>
             <g stroke="rgba(255,255,255,.5)" stroke-width="1.5">
               <line x1="20" y1="27" x2="20" y2="32"/><line x1="60.1" y1="27" x2="60.1" y2="32"/>
               <line x1="122.7" y1="27" x2="122.7" y2="32"/><line x1="168" y1="27" x2="168" y2="32"/>
@@ -646,7 +686,7 @@
               <text x="20" y="42">15</text><text x="60.1" y="42">24</text><text x="122.7" y="42">50</text>
               <text x="168" y="42">85</text><text x="207.4" y="42">135</text><text x="260" y="42">250</text>
             </g>
-            <circle id="dialThumb" cx="60.1" cy="22" r="11" fill="#f5c518" stroke="#fff" stroke-width="2"/>
+            <circle id="dialThumb" cx="60.1" cy="22" r="8" fill="#f5c518" stroke="#fff" stroke-width="1.5"/>
           </svg>
         </div>
         <div class="focal-note hidden" id="focalNote"></div>
@@ -667,7 +707,7 @@
 
         <!-- 底部快门行 -->
         <div class="cam-bottom">
-          <div class="thumb" id="lastThumb" title="上一张拍摄"><span>暂无</span></div>
+          <div class="thumb" id="lastThumb" title="打开相册"><span>暂无</span></div>
           <button class="shutter" id="shutterBtn" aria-label="拍摄"><span class="sh-icon"></span></button>
           <button class="cam-icon-btn flip-btn" id="btnFlip" aria-label="切换前后摄像头" title="切换前后摄像头">
             <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
@@ -897,6 +937,15 @@
         <p class="hint" style="margin-top:10px">作品存在本机浏览器中，不上传；清除浏览器数据会丢失，重要视频请及时下载到手机。</p>
       </div>
       <div class="glass about-card">
+        <h3>v4.8 新增</h3>
+        <ul>
+          <li>全屏相册：点左下角缩略图打开，网格浏览，点一张全屏看，左右滑切换，可下载/删除；缩略图显示作品库最新一张，重启 App 也还在</li>
+          <li>语音控制诊断：识别到的字实时显示（“听到：…”），命令匹配/没匹配上/联网失败都有提示；10 秒没结果会提醒检查网络；加“开始预录 / 预录”口令</li>
+          <li>变焦滑条圆点改小（约 23px），轨道变细</li>
+          <li>修复：风格开关压住变焦刻度（移到拨盘上方）；缓存进度压住语音提示（语音提示移到缓存行下方）</li>
+        </ul>
+      </div>
+      <div class="glass about-card">
         <h3>v4.7 新增</h3>
         <ul>
           <li>磨皮再加强：模糊半径加大 + 双重模糊 + 混合上限提高，默认 30 就一眼可见</li>
@@ -963,7 +1012,7 @@
           <li>AI 美颜：自填 API，用自己的模型做美颜</li>
         </ul>
       </div>
-      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v4.7 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
+      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v4.8 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
     </section>
   </main>
 
@@ -985,6 +1034,34 @@
       我的
     </div>
   </nav>
+</div>
+
+<!-- v4.8：全屏相册——点左下角缩略图打开，网格浏览，点一张全屏看，左右滑切换，可下载/删除 -->
+<div class="album-view hidden" id="albumView">
+  <div class="album-head">
+    <button class="album-back" id="albumClose" aria-label="关闭相册">×</button>
+    <div class="album-title" id="albumTitle">相册</div>
+    <div class="album-count" id="albumCount"></div>
+  </div>
+  <div class="album-grid" id="albumGrid"></div>
+  <div class="album-empty hidden" id="albumEmpty">还没有作品。拍摄照片或录制视频后会自动保存在这里。</div>
+  <div class="album-viewer hidden" id="albumViewer">
+    <div class="album-viewer-top">
+      <button class="album-back" id="albumViewerBack" aria-label="返回网格">‹ 相册</button>
+      <div class="album-viewer-pos" id="albumPos"></div>
+      <div style="width:64px"></div>
+    </div>
+    <div class="album-stage" id="albumStage"></div>
+    <button class="album-arrow album-prev" id="albumPrev" aria-label="上一张">‹</button>
+    <button class="album-arrow album-next" id="albumNext" aria-label="下一张">›</button>
+    <div class="album-bar">
+      <div class="album-info" id="albumInfo"></div>
+      <div class="album-actions">
+        <button class="btn small" id="albumDownload">下载</button>
+        <button class="btn small ghost" id="albumDelete" style="background:rgba(229,72,77,.28);color:#fff;border-color:rgba(229,72,77,.6)">删除</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -2487,13 +2564,25 @@ function setVideoThumb(videoEl){
   else videoEl.addEventListener('loadeddata', grab, { once: true });
 }
 
-/* ---- 语音控制（Web Speech API；不支持的浏览器不显示按钮） ---- */
+/* ---- 语音控制（Web Speech API；不支持的浏览器不显示按钮） ----
+   v4.8 诊断要点：v4.7 实测“正在听…”亮着但说话没反应。webkitSpeechRecognition 的失败
+   经常是静默的（network 错误后有的浏览器不触发 onend 重启、直接挂起），用户完全看不出
+   哪一环断了。所以本版把每一步都亮出来：听到什么字实时显示、匹配上 toast、没匹配上也
+   toast、出错 toast、10 秒没结果给提示。 */
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voiceHeard = document.getElementById('voiceHeard');
 let voiceOn = false, voiceRec = null, voiceBlocked = false;
-let voiceRestarts = [], lastVoiceCmd = 0;
+let voiceRestarts = [], lastVoiceCmd = 0, lastVoiceErrToast = 0;
+let voiceHeardAny = false, voiceWatchdog = null, voiceNoSpeechToasted = false;
 
 if (SpeechRec){
   btnVoice.classList.remove('hidden');
+}
+
+/* v4.8：识别文本归一化——ASR 常带空格、标点（“开 始 录 像。”），先去掉再匹配；
+   匹配用包含，不要求整句相等，多说的词（“请开始录像”）也能命中 */
+function normVoice(t){
+  return (t || '').replace(/[\s,.，。！？、；：'"“”‘’!?\-\(\)（）【】\[\]·~～…]/g, '');
 }
 
 function startVoice(){
@@ -2526,23 +2615,62 @@ function startVoiceNow(){
   voiceOn = true;
   voiceBlocked = false;
   voiceRestarts = [];
+  voiceHeardAny = false;
+  voiceNoSpeechToasted = false;
   btnVoice.classList.add('on');
   voiceNote.classList.remove('hidden');
   voiceIndicator.classList.remove('hidden');
+  voiceHeard.textContent = '';
+  voiceHeard.classList.remove('hidden');
+  // v4.8：看门狗——10 秒内一次识别结果都没有，说明识别服务没通（最常见是联网问题），
+  // 直接提示，不让“正在听…”一直假装在听。
+  clearTimeout(voiceWatchdog);
+  voiceWatchdog = setTimeout(() => {
+    if (voiceOn && !voiceHeardAny){
+      showToast('语音识别还没收到结果：识别服务要联网，请确认网络通畅；如果一直没反应，可能是当前浏览器不支持语音识别服务', 5000);
+    }
+  }, 10000);
   voiceRec.onresult = (ev) => {
+    voiceHeardAny = true;
     for (let i = ev.resultIndex; i < ev.results.length; i++){
       const res = ev.results[i];
       if (!res || !res[0]) continue;
-      handleVoiceCommand(res[0].transcript || '');
+      const text = res[0].transcript || '';
+      // v4.8：识别到的字实时亮出来（临时结果也显示），下次测试一眼就能看出麦克风有没有听到
+      voiceHeard.textContent = '听到：' + text;
+      handleVoiceCommand(text, !!res.isFinal);
     }
   };
+  voiceRec.onsoundstart = () => {
+    // 麦克风收到声音了（还不一定是说话）——听到行已有字时不覆盖
+    if (voiceHeard.textContent === '') voiceHeard.textContent = '听到声音了，正在识别…';
+  };
   voiceRec.onerror = (ev) => {
-    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed' || ev.error === 'audio-capture'){
+    const err = ev.error || '';
+    if (err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture'){
       voiceBlocked = true;
       stopVoice();
       showToast('麦克风权限被拒绝，语音控制已关闭：请在浏览器设置里允许本站使用麦克风', 5000);
+      return;
     }
-    // network / no-speech 等临时错误：由 onend 重启
+    if (err === 'aborted') return; // 主动 stop() 也会触发，不提示
+    // v4.8：network / no-speech 等以前静默吞掉的错误，现在都亮出来（节流，避免刷屏）
+    const now = Date.now();
+    if (err === 'no-speech'){
+      if (!voiceNoSpeechToasted){
+        voiceNoSpeechToasted = true;
+        showToast('没听到声音：请靠近麦克风，说“开始录像 / 拍照”', 4000);
+      }
+      return;
+    }
+    if (now - lastVoiceErrToast < 10000) return;
+    lastVoiceErrToast = now;
+    if (err === 'network'){
+      showToast('语音识别联网失败：识别服务要联网，请检查网络（正在重试）', 4000);
+    } else {
+      showToast('语音识别出错：' + err + '（正在重试）', 4000);
+    }
+    // 出错后由 onend 重启；部分浏览器出错后不触发 onend，看门狗与重启上限会接住
   };
   voiceRec.onend = () => {
     if (!voiceOn || voiceBlocked) return;
@@ -2551,10 +2679,10 @@ function startVoiceNow(){
     voiceRestarts.push(now);
     if (voiceRestarts.length > 3){
       stopVoice();
-      showToast('语音识别不稳定，已自动关闭');
+      showToast('语音识别不稳定，已自动关闭（识别服务可能连不上）');
       return;
     }
-    try { voiceRec.start(); } catch (e) { stopVoice(); }
+    try { voiceRec.start(); } catch (e) { stopVoice(); showToast('语音识别重启失败，已关闭'); }
   };
   try {
     voiceRec.start();
@@ -2565,39 +2693,51 @@ function startVoiceNow(){
 }
 function stopVoice(){
   voiceOn = false;
+  clearTimeout(voiceWatchdog);
   btnVoice.classList.remove('on');
   voiceNote.classList.add('hidden');
   voiceIndicator.classList.add('hidden');
+  voiceHeard.classList.add('hidden');
   if (voiceRec){
     try { voiceRec.stop(); } catch (e) {}
     voiceRec = null;
   }
 }
-function handleVoiceCommand(text){
+function handleVoiceCommand(text, isFinal){
   const now = Date.now();
-  if (now - lastVoiceCmd < 2000) return; // 同一句话的重复识别结果只执行一次
+  const norm = normVoice(text);
+  if (!norm) return;
+  const has = (...ws) => ws.some(w => norm.indexOf(w) >= 0);
   // v4.7：命令加语音识别的常见变体——“录像”常被识别成“录象”，“录制”也是常说的词；
-  // 守卫条件不满足时给提示，不再静默无反应。
-  const has = (...ws) => ws.some(w => text.indexOf(w) >= 0);
-  if (has('开始录像', '开始录象', '开始录制')){
+  // v4.8：加“开始预录 / 预录”口令（预录模式下开始录像即带预录片段）；守卫不满足时给提示，不再静默无反应。
+  // 同一句话的临时结果与最终结果只执行一次（2 秒节流，放各分支内，互不干扰）。
+  if (has('开始录像', '开始录象', '开始录制', '开始预录', '开始录', '录一段', '预录')){
+    if (now - lastVoiceCmd < 2000) return;
     if (!camReady){ showToast('请先打开相机'); return; }
     if (isRecording) return;
     if (curMode === 'photo') setMode('prerecord');
     lastVoiceCmd = now;
     // 预录模式下开始录像即带预录片段（toggleRecord 会把滚动缓存拼进去），提示里写明
-    showToast(curMode === 'prerecord' ? '收到：开始录像（含预录 ' + bufferSecs + ' 秒）' : '收到：开始录像');
+    showToast(curMode === 'prerecord' ? '已执行：开始录像（含预录 ' + bufferSecs + ' 秒）' : '已执行：开始录像');
     toggleRecord();
-  } else if (has('停止录像', '结束录像', '停止录制', '结束录制', '停止录象', '结束录象')){
+  } else if (has('停止录像', '结束录像', '停止录制', '结束录制', '停止录象', '结束录象', '停止录', '结束录', '别录了')){
+    if (now - lastVoiceCmd < 2000) return;
     if (!isRecording) return;
     lastVoiceCmd = now;
-    showToast('收到：停止录像');
+    showToast('已执行：停止录像');
     stopRecording();
-  } else if (has('拍照', '拍一张', '拍照片')){
+  } else if (has('拍照', '拍一张', '拍照片', '拍个照')){
+    if (now - lastVoiceCmd < 2000) return;
     if (!camReady){ showToast('请先打开相机'); return; }
     if (isRecording){ showToast('录制中不能拍照'); return; }
     lastVoiceCmd = now;
-    showToast('收到：拍照');
+    showToast('已执行：拍照');
     takePhoto();
+  } else if (isFinal && norm.length >= 2){
+    // v4.8：听到了字但没匹配上任何命令——只对最终结果提示（临时结果是半句，提示会刷屏）
+    if (now - lastVoiceCmd < 2000) return;
+    lastVoiceCmd = now;
+    showToast('听到了但没匹配上：“' + text + '”——请说“开始录像 / 停止录像 / 拍照”', 4000);
   }
 }
 
@@ -2642,13 +2782,13 @@ btnDelete.addEventListener('click', () => {
     btnDownload.removeAttribute('href');
     resultVideo.removeAttribute('src'); resultVideo.load();
     resultImg.removeAttribute('src');
-    lastThumb.innerHTML = '<span>暂无</span>';
+    // v4.8：不再把缩略图复位成“暂无”——删除会刷新作品库，缩略图自动跟随新的最新一条（库空了才显示暂无）
     camResult.classList.add('hidden');
     resetHealState();
     showToast('已删除');
   });
 });
-lastThumb.addEventListener('click', () => { if (hasResult) camResult.classList.remove('hidden'); });
+lastThumb.addEventListener('click', () => { openAlbum(); }); // v4.8：点缩略图打开全屏相册（原来只重开最近一张的结果面板，之前的照片看不到）
 btnVoice.addEventListener('click', () => { voiceOn ? stopVoice() : startVoice(); });
 btnStab.addEventListener('click', () => { setStab(!stabOn); });
 
@@ -3507,6 +3647,47 @@ function downloadClip(id){
 const libTotal = document.getElementById('libTotal');
 const libWarn = document.getElementById('libWarn');
 const libList = document.getElementById('libList');
+/* v4.8：左下角缩略图跟随作品库最新一条（跨会话也显示，不再只在本次拍摄后才有图）。
+   thumbOwnedUrl 只记本函数创建的 URL——拍照路径的缩略图与结果面板共用一个 URL，
+   那个归结果面板管，不能在这里释放。 */
+let thumbOwnedUrl = null;
+function refreshLatestThumb(list){
+  const apply = (items) => {
+    if (thumbOwnedUrl){ try { URL.revokeObjectURL(thumbOwnedUrl); } catch (e) {} thumbOwnedUrl = null; }
+    const latest = items && items[0];
+    if (!latest){ lastThumb.innerHTML = '<span>暂无</span>'; return; }
+    if (latest.kind === 'photo'){
+      thumbOwnedUrl = URL.createObjectURL(latest.blob);
+      setThumbImg(thumbOwnedUrl);
+    } else {
+      // 视频：临时 video 元素截首帧，截完释放 URL；失败则显示 🎬
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      const url = URL.createObjectURL(latest.blob);
+      const done = (ok) => {
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        if (!ok) lastThumb.innerHTML = '<span style="font-size:1.1rem">🎬</span>';
+      };
+      v.addEventListener('loadeddata', () => {
+        try {
+          if (!v.videoWidth){ done(false); return; }
+          const c = document.createElement('canvas');
+          c.width = 104; c.height = 104;
+          const ctx = c.getContext('2d');
+          const side = Math.min(v.videoWidth, v.videoHeight);
+          ctx.drawImage(v, (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side, 0, 0, 104, 104);
+          setThumbImg(c.toDataURL('image/jpeg', 0.7));
+          done(true);
+        } catch (e) { done(false); }
+      }, { once: true });
+      v.addEventListener('error', () => done(false), { once: true });
+      v.src = url;
+    }
+  };
+  if (list){ apply(list); return; }
+  if (!window.indexedDB) return;
+  getAllClips().then(l => { l.sort((a, b) => b.time - a.time); apply(l); }).catch(() => {});
+}
 function renderLibrary(){
   if (!window.indexedDB){
     libTotal.textContent = '当前浏览器不支持本地保存，请每次拍摄后直接点下载。';
@@ -3515,6 +3696,7 @@ function renderLibrary(){
   }
   getAllClips().then(list => {
     list.sort((a, b) => b.time - a.time);
+    refreshLatestThumb(list); // v4.8：作品库刷新时，左下角缩略图同步跟随最新一条
     const total = list.reduce((s, r) => s + (r.size || 0), 0);
     libTotal.textContent = '共 ' + list.length + ' 条作品，总占用 ' + fmtBytes(total) + '。';
     libWarn.classList.toggle('hidden', total <= LIB_WARN_BYTES);
@@ -3546,6 +3728,132 @@ libList.addEventListener('click', (e) => {
     const nm = item ? item.querySelector('.lm-name').textContent : '';
     if (confirm('删除「' + nm + '」？删除后无法恢复。')) deleteClip(del.dataset.del);
   }
+});
+
+/* ================= v4.8：全屏相册 =================
+   入口：左下角缩略图。网格按时间倒序，点一张全屏看，左右滑或点箭头切换，
+   可下载/删除。照片与视频都自动存到作品库（拍照/录像完成即 saveClip，
+   “继续拍摄”只关面板不丢片），所以相册里就是全部已拍作品，像手机相册一样。 */
+const albumView = document.getElementById('albumView');
+const albumGrid = document.getElementById('albumGrid');
+const albumEmpty = document.getElementById('albumEmpty');
+const albumTitle = document.getElementById('albumTitle');
+const albumCount = document.getElementById('albumCount');
+const albumViewer = document.getElementById('albumViewer');
+const albumStage = document.getElementById('albumStage');
+const albumInfo = document.getElementById('albumInfo');
+const albumPos = document.getElementById('albumPos');
+let albumList = [];        // 按时间倒序的作品记录
+let albumUrls = new Map(); // id -> object URL（打开相册时建，关闭时统一释放）
+let albumIndex = -1;
+
+function albumUrlFor(rec){
+  if (!albumUrls.has(rec.id)) albumUrls.set(rec.id, URL.createObjectURL(rec.blob));
+  return albumUrls.get(rec.id);
+}
+function openAlbum(){
+  getAllClips().then(list => {
+    list.sort((a, b) => b.time - a.time);
+    albumList = list;
+    albumIndex = -1;
+    albumViewer.classList.add('hidden');
+    albumTitle.textContent = '相册';
+    albumCount.textContent = list.length ? ('共 ' + list.length + ' 条') : '';
+    if (!list.length){
+      albumGrid.innerHTML = '';
+      albumEmpty.classList.remove('hidden');
+    } else {
+      albumEmpty.classList.add('hidden');
+      albumGrid.innerHTML = list.map(r => {
+        const url = albumUrlFor(r);
+        const media = r.kind === 'video'
+          ? '<video src="' + url + '" muted playsinline preload="metadata"></video>'
+          : '<img src="' + url + '" alt="">';
+        const badge = r.kind === 'video' ? '<span class="ac-badge">🎬 约 ' + r.seconds + ' 秒</span>' : '';
+        return '<div class="album-cell" data-id="' + r.id + '">' + media + badge + '</div>';
+      }).join('');
+    }
+    albumView.classList.remove('hidden');
+  }).catch(() => showToast('读取本地作品失败'));
+}
+function closeAlbum(){
+  albumView.classList.add('hidden');
+  albumViewer.classList.add('hidden');
+  albumStage.innerHTML = '';
+  albumGrid.innerHTML = '';
+  albumUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
+  albumUrls.clear();
+  albumList = [];
+  albumIndex = -1;
+}
+function showAlbumItem(i){
+  if (!albumList.length) return;
+  albumIndex = Math.max(0, Math.min(albumList.length - 1, i));
+  const rec = albumList[albumIndex];
+  const url = albumUrlFor(rec);
+  if (rec.kind === 'video'){
+    albumStage.innerHTML = '<video src="' + url + '" controls autoplay playsinline></video>';
+  } else {
+    albumStage.innerHTML = '<img src="' + url + '" alt="">';
+  }
+  albumPos.textContent = (albumIndex + 1) + ' / ' + albumList.length;
+  const dur = rec.kind === 'video' ? (' · 约 ' + rec.seconds + ' 秒') : '';
+  const tag = [rec.mode, rec.style].filter(Boolean).join(' · ');
+  albumInfo.innerHTML = escapeHtml(rec.name) + '<br>' + fmtLibTime(rec.time) + dur + ' · ' + fmtBytes(rec.size) + (tag ? ' · ' + escapeHtml(tag) : '');
+  albumViewer.classList.remove('hidden');
+}
+albumGrid.addEventListener('click', (e) => {
+  const cell = e.target.closest('.album-cell'); if (!cell) return;
+  const i = albumList.findIndex(r => r.id === cell.dataset.id);
+  if (i >= 0) showAlbumItem(i);
+});
+document.getElementById('albumClose').addEventListener('click', closeAlbum);
+document.getElementById('albumViewerBack').addEventListener('click', () => {
+  albumViewer.classList.add('hidden');
+  albumStage.innerHTML = '';
+});
+document.getElementById('albumPrev').addEventListener('click', () => showAlbumItem(albumIndex - 1));
+document.getElementById('albumNext').addEventListener('click', () => showAlbumItem(albumIndex + 1));
+// 左右滑动切换上一张/下一张
+(function(){
+  let sx = null;
+  albumStage.addEventListener('touchstart', (e) => { if (e.touches.length === 1) sx = e.touches[0].clientX; }, { passive: true });
+  albumStage.addEventListener('touchend', (e) => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    sx = null;
+    if (Math.abs(dx) < 40) return;
+    showAlbumItem(dx < 0 ? albumIndex + 1 : albumIndex - 1);
+  }, { passive: true });
+})();
+document.getElementById('albumDownload').addEventListener('click', () => {
+  if (albumIndex < 0) return;
+  downloadClip(albumList[albumIndex].id);
+});
+document.getElementById('albumDelete').addEventListener('click', () => {
+  if (albumIndex < 0) return;
+  const rec = albumList[albumIndex];
+  if (!confirm('删除「' + rec.name + '」？删除后无法恢复。')) return;
+  const id = rec.id;
+  deleteClip(id).then(ok => {
+    if (!ok) return;
+    albumList = albumList.filter(r => r.id !== id);
+    if (albumUrls.has(id)){ try { URL.revokeObjectURL(albumUrls.get(id)); } catch (e) {} albumUrls.delete(id); }
+    const cell = albumGrid.querySelector('[data-id="' + id + '"]');
+    if (cell) cell.remove();
+    albumCount.textContent = albumList.length ? ('共 ' + albumList.length + ' 条') : '';
+    // 删除会刷新作品库，左下角缩略图自动跟随新的最新一条
+    if (!albumList.length){
+      albumViewer.classList.add('hidden');
+      albumStage.innerHTML = '';
+      albumEmpty.classList.remove('hidden');
+      showToast('已删除');
+      return;
+    }
+    // 删后留在查看器，显示下一张（删的是最后一张则显示新的最后一张）
+    showAlbumItem(Math.min(albumIndex, albumList.length - 1));
+    showToast('已删除');
+  });
 });
 
 /* ================= 测距辅助 ================= */
