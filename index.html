@@ -91,11 +91,12 @@
   .cam-screen.proc-on canvas#viewCanvas{display:block}
   /* v4.9 顶部图标行（仿 vivo 原生相机）：只留图标按钮，左右两端稀疏排布、中间留空；
      原来的文字 chip（降噪已开 / 超级防抖 / 60fps / 预录 30s）全部移进 ••• 更多面板的拍摄设置区，
-     取景画面上方不再堆一排文字。 */
+     取景画面上方不再堆一排文字。
+     v5.0：上下内边距 8px→4px，整排再往顶上贴（v4.9 重写顶栏时又放回了 8px，用户说上面间距还是大）。 */
   .cam-topbar{
     position:absolute;top:0;left:0;right:0;z-index:5;
     display:flex;align-items:center;justify-content:space-between;gap:8px;
-    padding:calc(8px + env(safe-area-inset-top)) 16px 8px;
+    padding:calc(4px + env(safe-area-inset-top)) 16px 4px;
     background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0));
   }
   .cam-icon-btn{
@@ -124,25 +125,27 @@
   }
   .set-toggle.on{background:var(--gold);border-color:var(--gold);color:#1a1508;font-weight:700}
   .set-status{font-size:.8rem;color:#a8e6a3}
-  /* v4.9：拍照比例取景框——只在拍照模式显示，框外半透明遮暗，框内即拍到的范围 */
-  .ratio-frame{
-    position:absolute;z-index:4;pointer-events:none;
-    border:1px solid rgba(255,255,255,.75);border-radius:2px;
-    box-shadow:0 0 0 9999px rgba(0,0,0,.38);
-  }
+  /* v5.0：拍照比例取景提示——只在拍照模式显示。v4.9 的白框 + 框外遮暗把预览框成一个小方块，
+     看着像坏了；改成四个角标（只画角，不画边框、不遮暗），预览始终全屏铺满，比例只影响拍出的照片。 */
+  .ratio-frame{position:absolute;z-index:4;pointer-events:none}
+  .ratio-frame .rf-c{position:absolute;width:22px;height:22px;border:2px solid rgba(255,255,255,.7)}
+  .ratio-frame .rf-c.tl{left:0;top:0;border-right:none;border-bottom:none;border-radius:3px 0 0 0}
+  .ratio-frame .rf-c.tr{right:0;top:0;border-left:none;border-bottom:none;border-radius:0 3px 0 0}
+  .ratio-frame .rf-c.bl{left:0;bottom:0;border-right:none;border-top:none;border-radius:0 0 0 3px}
+  .ratio-frame .rf-c.br{right:0;bottom:0;border-left:none;border-top:none;border-radius:0 0 3px 0}
   .voice-note{
-    position:absolute;top:calc(92px + env(safe-area-inset-top));left:0;right:0;z-index:5;
+    position:absolute;top:calc(84px + env(safe-area-inset-top));left:0;right:0;z-index:5;
     text-align:center;font-size:.72rem;color:rgba(255,255,255,.85);pointer-events:none;
     text-shadow:0 1px 3px rgba(0,0,0,.8);
   }
-  /* 缓存 / 录制状态徽标 */
-  .vf-overlay{position:absolute;left:14px;top:calc(56px + env(safe-area-inset-top));z-index:5;display:flex;align-items:center;gap:6px;
+  /* 缓存 / 录制状态徽标（v5.0：随顶栏收紧上移 6px） */
+  .vf-overlay{position:absolute;left:14px;top:calc(50px + env(safe-area-inset-top));z-index:5;display:flex;align-items:center;gap:6px;
     background:rgba(0,0,0,.45);color:#fff;font-size:.75rem;padding:5px 10px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
   .vf-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
   .rec-timer-chip{
-    position:absolute;right:14px;top:calc(62px + env(safe-area-inset-top));z-index:5;
+    position:absolute;right:14px;top:calc(56px + env(safe-area-inset-top));z-index:5;
     background:rgba(0,0,0,.45);color:#fff;font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;
     padding:5px 12px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
@@ -220,13 +223,13 @@
   .style-card.on{border-color:#f5c518;background:rgba(245,197,24,.16)}
   /* v4.9：风格开关移到右侧边缘（仿 vivo 色彩风格入口，不再居中压在变焦药丸上方）——
      贴在美颜按钮下方，上下错开 11px，两者互不遮挡、不误触；风格条仍在底部横向展开。 */
+  /* v5.0：开关只写“风格”两个字——原来“🎞 风格 · 原图 ⌃”太长；当前风格在风格条里看得到，不用写在开关上 */
   .style-toggle{
     position:absolute;right:12px;top:calc(50% + 30px);z-index:6;
     border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.45);color:#fff;
     font-size:.78rem;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
-  .style-toggle .st-chev{color:#f5c518;font-weight:700;margin-left:2px}
   /* v4.9：风格条按 vivo 色彩风格选择器打磨——横向滑动浏览（带吸附）、点卡片切换、
      选中卡片金色边框高亮；卡片稍放大，好点。桌面端侧栏竖向列表不受影响（见下方媒体查询）。 */
   @media (max-width:899px){
@@ -247,7 +250,7 @@
   }
   .range-line .rl-tag{position:absolute;left:0;top:-20px;font-size:.68rem;color:#f5c518;text-shadow:0 1px 3px rgba(0,0,0,.9)}
   .range-panel{
-    position:absolute;left:12px;right:12px;top:calc(98px + env(safe-area-inset-top));z-index:7;
+    position:absolute;left:12px;right:12px;top:calc(92px + env(safe-area-inset-top));z-index:7;
     background:rgba(20,18,14,.88);border:1px solid rgba(255,255,255,.14);border-radius:16px;
     -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
     padding:12px 14px;color:#fff;
@@ -345,10 +348,11 @@
   }
   .err-box b{color:#fff}
   /* v4.8：语音提示行下移到 92px——原来 52px 与缓存徽标（56px）同高，缓存进度会压住提示文字；
-     正在听指示随之下移到 130px（提示两行约 36px + 间隙），识别到的字再往下到 168px，三行互不遮挡 */
+     正在听指示随之下移到 130px（提示两行约 36px + 间隙），识别到的字再往下到 168px，三行互不遮挡
+     v5.0：顶栏收紧后三行一起上移 8px（84 / 122 / 160），相对位置不变 */
   .voice-indicator{
     position:absolute;left:50%;transform:translateX(-50%);
-    top:calc(130px + env(safe-area-inset-top));z-index:5;
+    top:calc(122px + env(safe-area-inset-top));z-index:5;
     display:flex;align-items:center;gap:8px;
     background:rgba(0,0,0,.55);color:#fff;font-size:.8rem;padding:7px 14px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
@@ -357,18 +361,19 @@
   /* v4.8：识别到的字实时显示（“听到：开始录像”），语音不好使时一眼看出麦克风有没有听到 */
   .voice-heard{
     position:absolute;left:50%;transform:translateX(-50%);
-    top:calc(168px + env(safe-area-inset-top));z-index:5;
+    top:calc(160px + env(safe-area-inset-top));z-index:5;
     background:rgba(0,0,0,.55);color:#f5c518;font-size:.78rem;padding:6px 14px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
     max-width:92%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
   .cam-toast{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(400px + env(safe-area-inset-bottom));z-index:8; /* v4.7：原 330px 与变焦说明行同高，提示会盖住读数；上移到 400px，只压取景画面，不盖任何读数 */
+    bottom:calc(320px + env(safe-area-inset-bottom));z-index:8; /* v4.7：原 330px 与变焦说明行同高，提示会盖住读数；上移到 400px，只压取景画面，不盖任何读数
+      v5.0：语音看门狗长提示是个大泡泡，会压住缓存徽标与语音提示行；改窄（88%→76%）并下移到 320px，离顶栏更远，仍在变焦说明行（208px）上方 */
     background:rgba(0,0,0,.7);color:#fff;font-size:.82rem;padding:9px 18px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;
     /* v4.8：长提示允许换行（原来 nowrap，超过屏宽会被裁掉） */
-    white-space:normal;max-width:88%;text-align:center;
+    white-space:normal;max-width:76%;text-align:center;
   }
 
   /* ---- v4.8：全屏相册（点左下角缩略图打开；网格浏览，点一张全屏看，左右滑切换，可下载/删除） ---- */
@@ -384,6 +389,8 @@
   .album-cell{position:relative;aspect-ratio:1;overflow:hidden;background:#1a1a1a;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .album-cell img,.album-cell video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
   .album-cell .ac-badge{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:.62rem;padding:2px 6px;border-radius:999px}
+  /* v5.0：动图角标——金底黑字，与视频时长角标区分 */
+  .album-cell .ac-badge.motion{background:rgba(245,197,24,.9);color:#1a1508;font-weight:700}
   .album-cell .ac-check{
     position:absolute;left:6px;top:6px;width:22px;height:22px;border-radius:50%;z-index:2;
     border:2px solid rgba(255,255,255,.85);background:rgba(0,0,0,.35);color:transparent;
@@ -610,7 +617,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v4.9 原型 · LifeHack</div>
+    <div class="ver">v5.0 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -638,8 +645,8 @@
         <div class="voice-indicator hidden" id="voiceIndicator"><span class="mic-dot"></span>正在听…</div>
         <div class="voice-heard hidden" id="voiceHeard"></div>
         <div class="cam-toast hidden" id="camToast"></div>
-        <!-- v4.9：拍照比例取景框（仅拍照模式显示，框内即拍到的范围；位置与尺寸由 JS 按传感器画面与取景框算） -->
-        <div class="ratio-frame hidden" id="ratioFrame"></div>
+        <!-- v5.0：拍照比例取景提示——只画四个角标，不画白框、不遮暗，预览始终全屏铺满 -->
+        <div class="ratio-frame hidden" id="ratioFrame"><span class="rf-c tl"></span><span class="rf-c tr"></span><span class="rf-c bl"></span><span class="rf-c br"></span></div>
 
         <!-- v4.2：悬浮美颜按钮（相机未打开时隐藏；点一下直达美颜面板，与更多里的入口开同一个面板） -->
         <button class="beauty-fab hidden" id="beautyFab" aria-label="美颜" title="美颜">
@@ -705,8 +712,8 @@
 
         <!-- 取景器风格条：选后预览与录制实时带风格（相机未打开时隐藏） -->
         <div class="style-strip hidden collapsed" id="styleStrip"></div>
-        <!-- v4.9：风格开关移到右侧边缘（美颜按钮下方），不再居中压在变焦药丸上方 -->
-        <button class="style-toggle hidden" id="styleToggle">🎞 风格 · <span id="styleToggleName">原图</span> <span class="st-chev" id="styleToggleChev">⌃</span></button>
+        <!-- v5.0：风格开关只写“风格”两个字 -->
+        <button class="style-toggle hidden" id="styleToggle">风格</button>
 
         <!-- 底部模式栏 -->
         <div class="mode-tabs" id="modeTabs">
@@ -766,6 +773,12 @@
                 <button class="set-pill" data-ratio="16:9">16:9</button>
                 <button class="set-pill" data-ratio="1:1">1:1</button>
               </div>
+              <span class="set-note">仅拍照</span>
+            </div>
+            <!-- v5.0：动图——拍照时同时保存前后约 3 秒小视频（用预录制滚动缓存拼），仅拍照模式显示 -->
+            <div class="set-row" id="motionRow">
+              <span class="set-label">动图</span>
+              <button class="set-toggle" id="btnMotion" aria-label="动图开关" title="拍照时同时保存前后约 3 秒的小视频">关</button>
               <span class="set-note">仅拍照</span>
             </div>
             <div class="set-row">
@@ -990,6 +1003,17 @@
         <p class="hint" style="margin-top:10px">作品存在本机浏览器中，不上传；清除浏览器数据会丢失，重要视频请及时下载到手机。</p>
       </div>
       <div class="glass about-card">
+        <h3>v5.0 新增</h3>
+        <ul>
+          <li>动图：拍照模式打开后，按快门同时保存照片与前后约 3 秒小视频；相册里带“动图”角标，全屏查看时点“▶ 动图”播放</li>
+          <li>可安装到主屏幕：补了 Service Worker（离线打开应用外壳），浏览器里点“添加到主屏幕”就能当 App 用</li>
+          <li>修复：拍照比例取景提示改四个角标——不再画白框、不遮暗，预览始终全屏铺满，比例只影响拍出的照片</li>
+          <li>顶部收紧：图标行上下边距 8px→4px，缓存徽标与语音提示行一起上移，顶上不再空一大块</li>
+          <li>风格开关只写“风格”两个字，不再带当前风格名与箭头</li>
+          <li>修复：语音看门狗提示改短、气泡改窄下移，不再压住缓存徽标与语音提示行</li>
+        </ul>
+      </div>
+      <div class="glass about-card">
         <h3>v4.9 新增</h3>
         <ul>
           <li>相册批量删除：长按一张进入选定，再点其他张多选，一次全删；另有“全部删除”，删前都按条数确认</li>
@@ -1077,7 +1101,7 @@
           <li>AI 美颜：自填 API，用自己的模型做美颜</li>
         </ul>
       </div>
-      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v4.9 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
+      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v5.0 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
     </section>
   </main>
 
@@ -1128,6 +1152,7 @@
     <div class="album-bar">
       <div class="album-info" id="albumInfo"></div>
       <div class="album-actions">
+        <button class="btn small hidden" id="albumPlayMotion">▶ 动图</button>
         <button class="btn small" id="albumDownload">下载</button>
         <button class="btn small ghost" id="albumDelete" style="background:rgba(229,72,77,.28);color:#fff;border-color:rgba(229,72,77,.6)">删除</button>
       </div>
@@ -1331,6 +1356,8 @@ const dialThumb = document.getElementById('dialThumb');
 const dialProgress = document.getElementById('dialProgress');
 const focalNote = document.getElementById('focalNote');
 const btnStab = document.getElementById('btnStab');
+const motionRow = document.getElementById('motionRow'); // v5.0：动图开关行（仅拍照模式显示）
+const btnMotion = document.getElementById('btnMotion');
 const camToast = document.getElementById('camToast');
 const camScreen = document.getElementById('camScreen');
 const viewCanvas = document.getElementById('viewCanvas');
@@ -1341,6 +1368,17 @@ let bufferSecs = 30;
 let headerChunk = null;
 let ringChunks = [];
 let savedChunks = [];
+/* v5.0：动图开关（默认关；开过一次后记住选择）与采集状态 */
+let motionOn = false;
+try { motionOn = localStorage.getItem('zg-motion-photo') === '1'; } catch (e) {}
+let motionCollecting = false;   // 正在收快门后的片段
+let motionPreChunks = [];       // 快门前约 2 秒的缓存块
+let motionPostChunks = [];      // 快门后约 1.5 秒的缓存块
+let motionTimer = null;
+let motionPendingId = null;     // 本次拍照的作品记录 id（toBlob 回调里记下）
+let motionReadyBlob = null;     // 拼好的动图视频
+let motionReadySecs = 0;
+let motionDone = false;         // 本次采集已结束（无论成败）
 let isRecording = false;
 let expectFinish = false;
 let recStartTime = 0, recTimerId = null, bufTimerId = null, bufStartTime = 0;
@@ -1551,6 +1589,8 @@ async function startCamera(){
 
 function stopCameraTracks(){
   clearInterval(bufTimerId);
+  clearTimeout(motionTimer); // v5.0：相机停了，未拼完的动图采集一起取消
+  motionCollecting = false; motionPendingId = null; motionDone = false; motionReadyBlob = null;
   stopProcessing();
   expectFinish = false;
   try { if (camRecorder && camRecorder.state !== 'inactive') camRecorder.stop(); } catch (e) {}
@@ -2247,6 +2287,7 @@ function setMode(mode){
   else if (mode === 'photo') showToast('拍照模式：点快门保存照片');
   else if (mode === 'video') showToast('录像模式：不含预录制片段');
   updateBufferUI();
+  updateMotionUI(); // v5.0：动图开关行只在拍照模式显示
   updateRatioFrame(); // v4.9：取景框只在拍照模式显示，切模式时同步显隐
 }
 
@@ -2276,6 +2317,7 @@ function startBuffering(){
     const item = { t: Date.now(), blob: ev.data };
     ringChunks.push(item);
     if (isRecording) savedChunks.push(item);
+    if (motionCollecting) motionPostChunks.push(item); // v5.0：动图收快门后的片段
     trimRing();
   };
   camRecorder.onstop = () => {
@@ -2464,9 +2506,71 @@ function updateRatioFrame(){
 }
 window.addEventListener('resize', updateRatioFrame);
 
+/* ---- v5.0：动图（Live Photo 式） ----
+   开关在拍摄设置区，默认关，仅拍照模式显示。开着时按快门：照片照常拍，同时用
+   预录制滚动缓存拼一段约 3 秒的小视频——取快门前约 2 秒的缓存块，再继续收约
+   1.5 秒，拼好后挂到同一条照片记录上（motionBlob / motionSecs，不产生新记录）。
+   Android 按关键帧间隔出块（约 3 秒一块），实际时长 2–5 秒不等，提示里按实测秒数说。 */
+const MOTION_PRE_MS = 2000;
+const MOTION_POST_MS = 1500;
+function updateMotionUI(){
+  btnMotion.classList.toggle('on', motionOn);
+  btnMotion.textContent = motionOn ? '开' : '关';
+  motionRow.classList.toggle('hidden', curMode !== 'photo');
+}
+function setMotion(on){
+  motionOn = !!on;
+  try { localStorage.setItem('zg-motion-photo', motionOn ? '1' : '0'); } catch (e) {}
+  updateMotionUI();
+  showToast(motionOn ? '动图已开：拍照时同时保存前后约 3 秒小视频' : '动图已关');
+}
+function startMotionCapture(){
+  // 连拍时先把上一张的动图收尾（片段稍短，但不丢）
+  if (motionCollecting) finishMotionCapture();
+  // 录制器没跑就没有滚动缓存，动图做不了——照片照常保存，只是不挂动图
+  if (!camRecorder || camRecorder.state !== 'recording') return;
+  const now = Date.now();
+  motionPreChunks = ringChunks.filter(c => c.t >= now - MOTION_PRE_MS);
+  motionPostChunks = [];
+  motionReadyBlob = null; motionReadySecs = 0; motionDone = false;
+  motionCollecting = true;
+  clearTimeout(motionTimer);
+  motionTimer = setTimeout(finishMotionCapture, MOTION_POST_MS);
+}
+function finishMotionCapture(){
+  motionCollecting = false;
+  clearTimeout(motionTimer);
+  const parts = [];
+  if (headerChunk) parts.push(headerChunk);
+  for (const c of motionPreChunks) parts.push(c.blob);
+  for (const c of motionPostChunks) parts.push(c.blob);
+  if (parts.length > 1){
+    motionReadySecs = chunksSeconds(motionPreChunks.concat(motionPostChunks));
+    motionReadyBlob = new Blob(parts, { type: camMime || 'video/webm' });
+  }
+  motionDone = true;
+  tryAttachMotion();
+}
+function tryAttachMotion(){
+  // 照片记录 id 与动图采集都就绪才挂上去；缺任一就等另一边（toBlob 通常远快于 1.5 秒采集窗）
+  if (!motionDone || !motionPendingId) return;
+  const id = motionPendingId;
+  motionPendingId = null; motionDone = false;
+  if (!motionReadyBlob){
+    showToast('动图缓存未就绪，本次只保存了照片');
+    return;
+  }
+  const blob = motionReadyBlob, secs = motionReadySecs;
+  motionReadyBlob = null;
+  updateClipMotion(id, blob, secs);
+  showToast('动图已保存（约 ' + secs + ' 秒）');
+}
+
 /* ---- 拍照快照 ---- */
 function takePhoto(){
   if (!camReady || camVideo.videoWidth === 0){ showToast('相机画面未就绪'); return; }
+  // v5.0：动图开着时，快门按下即开始采集动图片段（取缓存里最近约 2 秒 + 之后约 1.5 秒）
+  if (motionOn) startMotionCapture();
   const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
   // 裁切窗口：数码变焦 + 超级防抖（与实时预览同一逻辑），使照片与预览一致
   // v4.9：再按所选照片比例居中裁切（4:3 / 16:9 / 1:1），拍出的照片就是这个比例
@@ -2502,7 +2606,7 @@ function takePhoto(){
     const stName = (STYLES.find(s => s.id === camStyle) || STYLES[0]).name;
     const styleTag = camStyle === 'orig' ? '' : '已应用「' + stName + '」风格 · ';
     const beautyOn = beauty.sharp > 0 || beauty.smooth > 0 || beauty.bright > 0 || beauty.denoise > 0;
-    resultNote.textContent = styleTag + '照片已保存（' + c.width + '×' + c.height + '）。' + (beautyOn ? '已应用美颜。' : '');
+    resultNote.textContent = styleTag + '照片已保存（' + c.width + '×' + c.height + '）。' + (beautyOn ? '已应用美颜。' : '') + (motionOn ? '正在保存动图片段…' : '');
     camResult.classList.remove('hidden');
     hasResult = true;
     setThumbImg(url);
@@ -2512,6 +2616,8 @@ function takePhoto(){
     healBase = ctx.getImageData(0, 0, c.width, c.height);
     healUrl = url; healName = fname;
     healClipId = resultClipId = saveClip({ kind: 'photo', blob: blob, name: fname, seconds: 0, mode: MODE_NAME[curMode], style: stName });
+    // v5.0：动图开着时记下记录 id，动图视频拼好后挂到这条记录上
+    if (motionOn){ motionPendingId = resultClipId; tryAttachMotion(); }
     btnHeal.classList.remove('hidden');
   }, 'image/jpeg', 0.92);
 }
@@ -2770,7 +2876,8 @@ function startVoiceNow(){
   clearTimeout(voiceWatchdog);
   voiceWatchdog = setTimeout(() => {
     if (voiceOn && !voiceHeardAny){
-      showToast('语音识别还没收到结果：识别服务要联网，请确认网络通畅；如果一直没反应，可能是当前浏览器不支持语音识别服务', 5000);
+      // v5.0：文案改短——原来五十多字是个大泡泡，会压住缓存徽标与语音提示行
+      showToast('语音识别无响应：请检查网络，或换个浏览器试试', 5000);
     }
   }, 10000);
   voiceRec.onresult = (ev) => {
@@ -2809,7 +2916,7 @@ function startVoiceNow(){
     if (now - lastVoiceErrToast < 10000) return;
     lastVoiceErrToast = now;
     if (err === 'network'){
-      showToast('语音识别联网失败：识别服务要联网，请检查网络（正在重试）', 4000);
+      showToast('语音识别联网失败，请检查网络（正在重试）', 4000);
     } else {
       showToast('语音识别出错：' + err + '（正在重试）', 4000);
     }
@@ -2961,6 +3068,9 @@ ratioPills.addEventListener('click', (e) => {
   haptic();
   setPhotoRatio(b.dataset.ratio);
 });
+
+/* v5.0：动图开关（设置区，仅拍照模式显示） */
+btnMotion.addEventListener('click', () => { haptic(); setMotion(!motionOn); });
 
 document.getElementById('modeTabs').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
@@ -3534,16 +3644,10 @@ styleStrip.addEventListener('click', (e) => {
 });
 
 /* ---- v4.7：风格条可收起（默认收起，取景界面干净；点开关展开/收起） ----
-   开关 chip 显示当前风格，展开时移到风格条上方；展开时取景器加 .styles-open，
-   变焦拨盘与说明行自动上移让位（见 CSS），收起时落回原位。 */
+   v5.0：开关只写“风格”两个字，不再同步显示当前风格名与上下箭头。 */
 const styleToggle = document.getElementById('styleToggle');
-const styleToggleName = document.getElementById('styleToggleName');
-const styleToggleChev = document.getElementById('styleToggleChev');
 function updateStyleToggle(){
-  const st = STYLES.find(s => s.id === camStyle) || STYLES[0];
-  styleToggleName.textContent = st.name;
   const open = !styleStrip.classList.contains('collapsed');
-  styleToggleChev.textContent = open ? '⌄' : '⌃';
   camScreen.classList.toggle('styles-open', open);
 }
 styleToggle.addEventListener('click', () => {
@@ -3769,6 +3873,20 @@ function updateClipBlob(id, blob){
     };
   }).catch(() => {});
 }
+/* v5.0：动图视频拼好后挂到照片记录上（同一条记录，不产生新记录；size 计入动图体积，总占用如实） */
+function updateClipMotion(id, blob, secs){
+  if (!window.indexedDB) return;
+  libTx('readwrite').then(store => {
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const rec = getReq.result;
+      if (!rec) return;
+      rec.motionBlob = blob; rec.motionSecs = secs; rec.size = (rec.size || 0) + blob.size;
+      const putReq = store.put(rec);
+      putReq.onsuccess = () => { renderLibrary(); };
+    };
+  }).catch(() => {});
+}
 function getAllClips(){
   return libTx('readonly').then(store => new Promise((resolve, reject) => {
     const req = store.getAll();
@@ -3931,6 +4049,18 @@ function albumUrlFor(rec){
   if (!albumUrls.has(rec.id)) albumUrls.set(rec.id, URL.createObjectURL(rec.blob));
   return albumUrls.get(rec.id);
 }
+/* v5.0：动图视频的 object URL 与照片共用一张表（键加 ':motion' 后缀，关闭相册时统一释放） */
+function albumMotionUrlFor(rec){
+  const key = rec.id + ':motion';
+  if (!albumUrls.has(key)) albumUrls.set(key, URL.createObjectURL(rec.motionBlob));
+  return albumUrls.get(key);
+}
+/* v5.0：删一条作品时，照片与动图两条 URL 一起释放（只放照片会漏动图的） */
+function revokeAlbumUrls(id){
+  [id, id + ':motion'].forEach(k => {
+    if (albumUrls.has(k)){ try { URL.revokeObjectURL(albumUrls.get(k)); } catch (e) {} albumUrls.delete(k); }
+  });
+}
 /* v4.9：视频缩略图增强——首帧常是黑帧（录制启动瞬间），加载元数据后往后探 0.1 秒取一帧；
    取不到任何帧（或加载失败）则显示 🎬 占位，不再是一块纯黑。 */
 function enhanceAlbumVideoThumbs(){
@@ -3967,7 +4097,9 @@ function renderAlbumGrid(){
       const media = r.kind === 'video'
         ? '<video src="' + url + '" muted playsinline preload="metadata"></video>'
         : '<img src="' + url + '" alt="">';
-      const badge = r.kind === 'video' ? '<span class="ac-badge">🎬 约 ' + r.seconds + ' 秒</span>' : '';
+      // v5.0：带动图的照片右下角金色“动图”角标
+      const badge = r.kind === 'video' ? '<span class="ac-badge">🎬 约 ' + r.seconds + ' 秒</span>'
+        : (r.motionBlob ? '<span class="ac-badge motion">动图</span>' : '');
       return '<div class="album-cell" data-id="' + r.id + '"><span class="ac-check">✓</span>' + media + badge + '</div>';
     }).join('');
     enhanceAlbumVideoThumbs();
@@ -4040,7 +4172,7 @@ function deleteAlbumIds(ids){
     ids.forEach((id, i) => { if (results[i]) okIds.add(id); });
     albumList = albumList.filter(r => !okIds.has(r.id));
     okIds.forEach(id => {
-      if (albumUrls.has(id)){ try { URL.revokeObjectURL(albumUrls.get(id)); } catch (e) {} albumUrls.delete(id); }
+      revokeAlbumUrls(id); // v5.0：照片与动图两条 URL 一起释放
       albumSel.delete(id);
     });
     return okIds.size;
@@ -4075,6 +4207,7 @@ albumDeleteAll.addEventListener('click', () => {
 function showAlbumItem(i){
   if (!albumList.length) return;
   albumIndex = Math.max(0, Math.min(albumList.length - 1, i));
+  albumShowingMotion = false; // v5.0：切到另一张时回到照片态
   const rec = albumList[albumIndex];
   const url = albumUrlFor(rec);
   if (rec.kind === 'video'){
@@ -4085,9 +4218,31 @@ function showAlbumItem(i){
   albumPos.textContent = (albumIndex + 1) + ' / ' + albumList.length;
   const dur = rec.kind === 'video' ? (' · 约 ' + rec.seconds + ' 秒') : '';
   const tag = [rec.mode, rec.style].filter(Boolean).join(' · ');
-  albumInfo.innerHTML = escapeHtml(rec.name) + '<br>' + fmtLibTime(rec.time) + dur + ' · ' + fmtBytes(rec.size) + (tag ? ' · ' + escapeHtml(tag) : '');
+  // v5.0：动图在信息行里注明时长；“▶ 动图”按钮只在带照片动图时出现
+  const motionTag = (rec.kind === 'photo' && rec.motionBlob) ? ' · 动图约 ' + (rec.motionSecs || 0) + ' 秒' : '';
+  albumInfo.innerHTML = escapeHtml(rec.name) + '<br>' + fmtLibTime(rec.time) + dur + motionTag + ' · ' + fmtBytes(rec.size) + (tag ? ' · ' + escapeHtml(tag) : '');
+  albumPlayMotion.classList.toggle('hidden', !(rec.kind === 'photo' && rec.motionBlob));
+  albumPlayMotion.textContent = '▶ 动图';
   albumViewer.classList.remove('hidden');
 }
+/* v5.0：查看动图——点一下播小视频（循环），再点回到照片；切到别的照片时自动回到照片态 */
+let albumShowingMotion = false;
+const albumPlayMotion = document.getElementById('albumPlayMotion');
+albumPlayMotion.addEventListener('click', () => {
+  if (albumIndex < 0) return;
+  const rec = albumList[albumIndex];
+  if (!rec || rec.kind !== 'photo' || !rec.motionBlob) return;
+  haptic();
+  if (albumShowingMotion){
+    albumShowingMotion = false;
+    albumStage.innerHTML = '<img src="' + albumUrlFor(rec) + '" alt="">';
+    albumPlayMotion.textContent = '▶ 动图';
+  } else {
+    albumShowingMotion = true;
+    albumStage.innerHTML = '<video src="' + albumMotionUrlFor(rec) + '" controls autoplay loop playsinline></video>';
+    albumPlayMotion.textContent = '照片';
+  }
+});
 albumGrid.addEventListener('click', (e) => {
   if (lpSuppressClick){ lpSuppressClick = false; return; } // 长按松手后那次 click 不算点选
   const cell = e.target.closest('.album-cell'); if (!cell) return;
@@ -4153,7 +4308,7 @@ document.getElementById('albumDelete').addEventListener('click', () => {
     if (!ok) return;
     albumList = albumList.filter(r => r.id !== id);
     albumSel.delete(id); // v4.9：查看器里删掉的，选定集合里也去掉（选定模式下进不了查看器，这里是兜底）
-    if (albumUrls.has(id)){ try { URL.revokeObjectURL(albumUrls.get(id)); } catch (e) {} albumUrls.delete(id); }
+    revokeAlbumUrls(id); // v5.0：照片与动图两条 URL 一起释放
     const cell = albumGrid.querySelector('[data-id="' + id + '"]');
     if (cell) cell.remove();
     albumCount.textContent = albumList.length ? ('共 ' + albumList.length + ' 条') : '';
@@ -4335,10 +4490,19 @@ renderLibrary();
 updateFpsUI(); // 恢复上次选的帧率（默认 60fps）
 updateStabUI(); // 恢复防抖开关状态（陀螺仪待相机打开后自动接回）
 updateRatioPills(); // v4.9：恢复上次选的照片比例（默认 4:3）
+updateMotionUI(); // v5.0：恢复动图开关状态（默认关；仅拍照模式显示开关行）
 updateDialUI(); // 拨盘初始指向 24mm
 setInterval(() => {
   if (document.getElementById('view-light').classList.contains('active')) renderLight();
 }, 60000);
+
+/* v5.0：注册 Service Worker——缓存应用外壳（index.html / manifest / 图标 / 地区数据），
+   支持离线打开与安装到主屏幕；注册失败静默跳过，不影响正常使用。 */
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
