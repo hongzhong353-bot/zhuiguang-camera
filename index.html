@@ -93,7 +93,7 @@
   .cam-topbar{
     position:absolute;top:0;left:0;right:0;z-index:5;
     display:flex;align-items:center;justify-content:space-between;gap:8px;
-    padding:calc(10px + env(safe-area-inset-top)) 10px 10px;
+    padding:calc(4px + env(safe-area-inset-top)) 10px 8px; /* v4.7：顶部控制行上移 6px，留出更多取景空间；safe-area 保留，不顶刘海 */
     background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0));
   }
   .cam-topbar .t-left,.cam-topbar .t-right{display:flex;align-items:center;gap:6px}
@@ -116,12 +116,12 @@
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .voice-note{
-    position:absolute;top:calc(58px + env(safe-area-inset-top));left:0;right:0;z-index:5;
+    position:absolute;top:calc(52px + env(safe-area-inset-top));left:0;right:0;z-index:5;
     text-align:center;font-size:.72rem;color:rgba(255,255,255,.85);pointer-events:none;
     text-shadow:0 1px 3px rgba(0,0,0,.8);
   }
   /* 缓存 / 录制状态徽标 */
-  .vf-overlay{position:absolute;left:14px;top:calc(62px + env(safe-area-inset-top));z-index:5;display:flex;align-items:center;gap:6px;
+  .vf-overlay{position:absolute;left:14px;top:calc(56px + env(safe-area-inset-top));z-index:5;display:flex;align-items:center;gap:6px;
     background:rgba(0,0,0,.45);color:#fff;font-size:.75rem;padding:5px 10px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
   .vf-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite}
@@ -153,12 +153,16 @@
   .vf-corners .tr{right:0;top:0;border-left:none;border-bottom:none;border-radius:0 4px 0 0}
   .vf-corners .bl{left:0;bottom:0;border-right:none;border-top:none;border-radius:0 0 0 4px}
   .vf-corners .br{right:0;bottom:0;border-left:none;border-top:none;border-radius:0 0 4px 0}
-  /* v3.3：弧形变焦拨盘（替代点击式胶囊）：SVG 弧线 + 可拖动滑块，对数映射，刻度 15/24/50/85/135/250 */
+  /* v4.7：变焦拨盘改扁平横滑条——v3.3 的弧形拨盘在非全屏下太高（约 106px），占掉大半取景画面；
+     且弧顶伸到屏幕中部，与右侧美颜按钮的触控区重叠，点美颜会误触变焦到 250mm。
+     新拨盘：横向直轨、总高约 70px、默认贴在模式栏上方（bottom 150px），取景画面让出来；
+     风格条展开时拨盘自动上移让位（.styles-open）。对数映射与刻度吸附不变。 */
   .focal-dial{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(214px + env(safe-area-inset-bottom));z-index:5;
-    width:min(320px,88vw);text-align:center;
+    bottom:calc(150px + env(safe-area-inset-bottom));z-index:5;
+    width:min(340px,92vw);text-align:center;
   }
+  #camScreen.styles-open .focal-dial{bottom:calc(250px + env(safe-area-inset-bottom))}
   .focal-dial .fd-readout{
     font-size:1rem;font-weight:700;color:#f5c518;line-height:1.2;
     text-shadow:0 1px 3px rgba(0,0,0,.8);font-variant-numeric:tabular-nums;
@@ -166,12 +170,13 @@
   .focal-dial svg{display:block;width:100%;height:auto;touch-action:none;cursor:pointer}
   .focal-note{
     position:absolute;left:0;right:0;text-align:center;
-    bottom:calc(330px + env(safe-area-inset-bottom));z-index:5;
+    bottom:calc(226px + env(safe-area-inset-bottom));z-index:5;
     font-size:.68rem;color:rgba(255,255,255,.65);text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;
   }
+  #camScreen.styles-open .focal-note{bottom:calc(326px + env(safe-area-inset-bottom))}
   /* v3.3：帧率选择菜单（顶栏帧率 chip 下拉） */
   .fps-menu{
-    position:absolute;top:calc(56px + env(safe-area-inset-top));right:12px;z-index:8;
+    position:absolute;top:calc(50px + env(safe-area-inset-top));right:12px;z-index:8;
     background:rgba(20,18,14,.95);border:1px solid rgba(255,255,255,.16);border-radius:12px;
     padding:6px;min-width:132px;
     -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
@@ -211,6 +216,20 @@
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   }
   .style-card.on{border-color:#f5c518;background:rgba(245,197,24,.16)}
+  /* v4.7：风格条可收起——默认收起，只留一个风格开关 chip（显示当前风格），取景界面干净；
+     点一下展开风格条，再点收起；展开时开关移到风格条上方。桌面端侧栏常驻，不用开关。 */
+  .style-toggle{
+    position:absolute;left:50%;transform:translateX(-50%);
+    bottom:calc(144px + env(safe-area-inset-bottom));z-index:6;
+    border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.45);color:#fff;
+    font-size:.78rem;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  }
+  .style-toggle .st-chev{color:#f5c518;font-weight:700;margin-left:2px}
+  #camScreen.styles-open .style-toggle{bottom:calc(210px + env(safe-area-inset-bottom))}
+  @media (max-width:899px){
+    .style-strip.collapsed{display:none}
+  }
   .style-card svg{width:38px;height:26px;display:block;margin:0 auto}
   .style-card .nm{font-size:.58rem;color:#fff;margin-top:2px;line-height:1.25;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .style-card .en{font-size:.52rem;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -224,7 +243,7 @@
   }
   .range-line .rl-tag{position:absolute;left:0;top:-20px;font-size:.68rem;color:#f5c518;text-shadow:0 1px 3px rgba(0,0,0,.9)}
   .range-panel{
-    position:absolute;left:12px;right:12px;top:calc(104px + env(safe-area-inset-top));z-index:7;
+    position:absolute;left:12px;right:12px;top:calc(98px + env(safe-area-inset-top));z-index:7;
     background:rgba(20,18,14,.88);border:1px solid rgba(255,255,255,.14);border-radius:16px;
     -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
     padding:12px 14px;color:#fff;
@@ -324,7 +343,7 @@
   .err-box b{color:#fff}
   .voice-indicator{
     position:absolute;left:50%;transform:translateX(-50%);
-    top:calc(100px + env(safe-area-inset-top));z-index:5;
+    top:calc(94px + env(safe-area-inset-top));z-index:5;
     display:flex;align-items:center;gap:8px;
     background:rgba(0,0,0,.55);color:#fff;font-size:.8rem;padding:7px 14px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
@@ -332,7 +351,7 @@
   .voice-indicator .mic-dot{width:9px;height:9px;border-radius:50%;background:#4caf50;animation:pulse 1s infinite}
   .cam-toast{
     position:absolute;left:50%;transform:translateX(-50%);
-    bottom:calc(330px + env(safe-area-inset-bottom));z-index:8;
+    bottom:calc(400px + env(safe-area-inset-bottom));z-index:8; /* v4.7：原 330px 与变焦说明行同高，提示会盖住读数；上移到 400px，只压取景画面，不盖任何读数 */
     background:rgba(0,0,0,.7);color:#fff;font-size:.82rem;padding:9px 18px;border-radius:999px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;
   }
@@ -472,8 +491,8 @@
     .voice-indicator{left:calc(50% - 160px)}
     .cam-toast{left:calc(50% - 160px);bottom:40px}
 
-    /* 桌面端没有变焦：变焦拨盘与说明隐藏（手机端保留） */
-    .focal-dial, .focal-note{display:none !important}
+    /* 桌面端没有变焦：变焦拨盘与说明隐藏（手机端保留）；风格开关只在手机端用，桌面端侧栏常驻 */
+    .focal-dial, .focal-note, .style-toggle{display:none !important}
 
     /* 侧栏：风格条改竖向列表 */
     .style-strip{
@@ -528,7 +547,7 @@
 <div class="app">
   <header>
     <h1>追光<span>相机</span></h1>
-    <div class="ver">v4.6 原型 · LifeHack</div>
+    <div class="ver">v4.7 原型 · LifeHack</div>
   </header>
 
   <main>
@@ -566,7 +585,7 @@
         </div>
 
         <!-- 缓存 / 录制状态 -->
-        <div class="vf-overlay hidden" id="bufferBadge"><span class="vf-dot"></span><span id="bufferText">正在缓存 0 秒</span></div>
+        <div class="vf-overlay hidden" id="bufferBadge"><span class="vf-dot"></span><span id="bufferText">已缓存 0 秒 / 30 秒</span></div>
         <div class="rec-timer-chip hidden" id="recTimerChip">00:00</div>
         <div class="voice-indicator hidden" id="voiceIndicator"><span class="mic-dot"></span>正在听…</div>
         <div class="cam-toast hidden" id="camToast"></div>
@@ -612,28 +631,30 @@
 
         <div class="glass err-box hidden" id="camError" style="padding:14px 16px"></div>
 
-        <!-- 弧形变焦拨盘（相机未打开时隐藏；拖动滑块连续变焦，对数映射，刻度吸附；上限 250mm） -->
+        <!-- v4.7 扁平变焦滑条（相机未打开时隐藏；横向直轨，拖动滑块连续变焦，对数映射，刻度吸附；上限 250mm） -->
         <div class="focal-dial hidden" id="focalDial">
           <div class="fd-readout" id="focalReadout">24mm</div>
-          <svg id="focalDialSvg" viewBox="0 0 280 76" aria-label="变焦拨盘">
-            <path d="M 20 50 A 300 300 0 0 1 260 50" stroke="rgba(255,255,255,.25)" stroke-width="3" fill="none" stroke-linecap="round"/>
-            <path id="dialProgress" d="M 20 50 A 300 300 0 0 1 58.8 36.2" stroke="#f5c518" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <svg id="focalDialSvg" viewBox="0 0 280 44" aria-label="变焦滑条">
+            <path d="M 20 22 L 260 22" stroke="rgba(255,255,255,.25)" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path id="dialProgress" d="M 20 22 L 60.1 22" stroke="#f5c518" stroke-width="3" fill="none" stroke-linecap="round"/>
             <g stroke="rgba(255,255,255,.5)" stroke-width="1.5">
-              <line x1="20" y1="50" x2="24" y2="59.2"/><line x1="58.8" y1="36.2" x2="61.5" y2="45.8"/>
-              <line x1="122.2" y1="25.5" x2="122.8" y2="35.5"/><line x1="168.7" y1="26.4" x2="167.8" y2="36.3"/>
-              <line x1="208.8" y1="33" x2="206.5" y2="42.7"/><line x1="260" y1="50" x2="256" y2="59.2"/>
+              <line x1="20" y1="27" x2="20" y2="32"/><line x1="60.1" y1="27" x2="60.1" y2="32"/>
+              <line x1="122.7" y1="27" x2="122.7" y2="32"/><line x1="168" y1="27" x2="168" y2="32"/>
+              <line x1="207.4" y1="27" x2="207.4" y2="32"/><line x1="260" y1="27" x2="260" y2="32"/>
             </g>
             <g font-size="9" fill="rgba(255,255,255,.75)" text-anchor="middle">
-              <text x="28" y="68.4">15</text><text x="64.2" y="55.4">24</text><text x="123.4" y="45.5">50</text>
-              <text x="166.8" y="46.3">85</text><text x="204.2" y="52.5">135</text><text x="252" y="68.4">250</text>
+              <text x="20" y="42">15</text><text x="60.1" y="42">24</text><text x="122.7" y="42">50</text>
+              <text x="168" y="42">85</text><text x="207.4" y="42">135</text><text x="260" y="42">250</text>
             </g>
-            <circle id="dialThumb" cx="58.8" cy="36.2" r="11" fill="#f5c518" stroke="#fff" stroke-width="2"/>
+            <circle id="dialThumb" cx="60.1" cy="22" r="11" fill="#f5c518" stroke="#fff" stroke-width="2"/>
           </svg>
         </div>
         <div class="focal-note hidden" id="focalNote"></div>
 
         <!-- 取景器风格条：选后预览与录制实时带风格（相机未打开时隐藏） -->
-        <div class="style-strip hidden" id="styleStrip"></div>
+        <div class="style-strip hidden collapsed" id="styleStrip"></div>
+        <!-- v4.7：风格开关（默认收起，点一下展开风格条，再点收起；显示当前风格） -->
+        <button class="style-toggle hidden" id="styleToggle">🎞 风格 · <span id="styleToggleName">原图</span> <span class="st-chev" id="styleToggleChev">⌃</span></button>
 
         <!-- 底部模式栏 -->
         <div class="mode-tabs" id="modeTabs">
@@ -709,6 +730,7 @@
           <div class="result-actions">
             <a class="btn small" id="btnDownload" href="#" download>下载</a>
             <button class="btn small ghost hidden" id="btnHeal" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)">去瑕疵</button>
+            <button class="btn small ghost" id="btnDelete" style="background:rgba(229,72,77,.28);color:#fff;border-color:rgba(229,72,77,.6)">删除</button>
             <button class="btn small ghost" id="btnAgain" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)">继续拍摄</button>
           </div>
           <div class="heal-bar hidden" id="healBar">
@@ -875,6 +897,19 @@
         <p class="hint" style="margin-top:10px">作品存在本机浏览器中，不上传；清除浏览器数据会丢失，重要视频请及时下载到手机。</p>
       </div>
       <div class="glass about-card">
+        <h3>v4.7 新增</h3>
+        <ul>
+          <li>磨皮再加强：模糊半径加大 + 双重模糊 + 混合上限提高，默认 30 就一眼可见</li>
+          <li>修复：佳能人像实时预览偏红（实时滤镜去掉全帧 sepia 与 hue-rotate）</li>
+          <li>删除：拍完可在回顾面板直接删除；作品库删除前会确认</li>
+          <li>变焦拨盘改扁平横滑条：更矮、更靠下，不再遮挡取景；只响应轨道上的拖动，点美颜不再误触变焦</li>
+          <li>风格条可收起：默认收起只留风格开关，点一下展开、再点收起</li>
+          <li>预录缓存改为“已缓存 N 秒 / M 秒”实时进度</li>
+          <li>顶部控制行上移，提示气泡不再遮挡变焦读数</li>
+          <li>语音控制：麦克风权限被拒时明确提示；“开始录像”加识别变体，预录模式下会说明含预录片段</li>
+        </ul>
+      </div>
+      <div class="glass about-card">
         <h3>v4 新增</h3>
         <ul>
           <li>厂商风格色彩重调：按色相分段调色，佳能人像红里透白、富士 Velvia 与 Classic Chrome 各有招牌味道</li>
@@ -928,7 +963,7 @@
           <li>AI 美颜：自填 API，用自己的模型做美颜</li>
         </ul>
       </div>
-      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v4.6 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
+      <p class="hint" style="text-align:center;margin-top:16px">追光相机 v4.7 原型 · 2026 Qoder 高校创造力大赛 LifeHack 赛道参赛作品参考原型</p>
     </section>
   </main>
 
@@ -1115,6 +1150,7 @@ const camResult = document.getElementById('camResult');
 const resultVideo = document.getElementById('resultVideo');
 const resultImg = document.getElementById('resultImg');
 const btnDownload = document.getElementById('btnDownload');
+const btnDelete = document.getElementById('btnDelete'); // v4.7：拍完当场删除
 const btnAgain = document.getElementById('btnAgain');
 const btnHeal = document.getElementById('btnHeal'); // v4.3：去瑕疵入口（仅照片）
 const healBar = document.getElementById('healBar');
@@ -1183,6 +1219,7 @@ let stabListening = false, stabHasBase = false, stabCheckTimer = null;
 let stabBaseBeta = 0, stabBaseGamma = 0, stabRelBeta = 0, stabRelGamma = 0;
 let stabOffX = 0, stabOffY = 0; // 归一化偏移（相对画面宽/高的分数）
 let hasResult = false;
+let resultClipId = null; // v4.7：当前回顾面板里这张照片/视频在作品库的记录 id（删除用）
 let camStyle = 'orig'; // 取景器当前风格（与 STYLES 的 id 对应）
 let procCtx = null, procStream = null, procRaf = 0;
 let useProcessed = false;   // true = 录制处理过的流；false = 录原始流（降级）
@@ -1192,11 +1229,11 @@ let procSlowFrames = 0;
 const MODE_NAME = { prerecord: '预录', photo: '拍照', video: '录像' };
 
 let toastTimer = null;
-function showToast(msg){
+function showToast(msg, ms){
   camToast.textContent = msg;
   camToast.classList.remove('hidden');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => camToast.classList.add('hidden'), 2600);
+  toastTimer = setTimeout(() => camToast.classList.add('hidden'), ms || 2600);
 }
 
 function pickMime(){
@@ -1321,6 +1358,7 @@ async function startCamera(){
   focalDial.classList.remove('hidden');
   focalNote.classList.remove('hidden');
   styleStrip.classList.remove('hidden');
+  styleToggle.classList.remove('hidden'); // v4.7：风格开关随相机一起出现（风格条本身默认收起）
   beautyFab.classList.remove('hidden'); // v4.2：悬浮美颜按钮随相机一起出现
   updateFlipVisibility();
   // v3.3：如实读取设备实际帧率，给不到所选值时不谎称，只显示实际值
@@ -1377,6 +1415,7 @@ function stopCameraTracks(){
   focalDial.classList.add('hidden');
   focalNote.classList.add('hidden');
   styleStrip.classList.add('hidden');
+  styleToggle.classList.add('hidden'); // v4.7：相机停了，风格开关一起藏起来
   beautyFab.classList.add('hidden'); // v4.2：相机停了，悬浮美颜按钮一起藏起来
   updateStabUI(); // 处理已停，防抖 chip 状态同步（开关与陀螺仪监听保持，下次开相机自动接回）
   applyVideoTransform();
@@ -1477,36 +1516,39 @@ function updateFocalNote(){
   }
 }
 
-/* ---- v3.3：弧形变焦拨盘（SVG 弧线，圆心 (140,325)，半径 300；对数映射，刻度吸附） ---- */
+/* ---- v4.7：扁平变焦滑条（横向直轨 y=22，x 20–260；对数映射，刻度吸附） ----
+   v3.3 的弧形拨盘太高且弧顶伸进屏幕中部，非全屏下遮挡取景、还与美颜按钮误触；
+   改为横向直轨后总高减半，拖动逻辑不变（仍是对数映射 + 刻度吸附）。 */
 const FOCAL_MIN = 15, FOCAL_MAX = 250;
 const FOCAL_STOPS = [15, 24, 50, 85, 135, 250];
-const DIAL_CX = 140, DIAL_CY = 325, DIAL_R = 300;
-const DIAL_A0 = Math.atan2(50 - DIAL_CY, 20 - DIAL_CX);
-const DIAL_A1 = Math.atan2(50 - DIAL_CY, 260 - DIAL_CX);
+const TRACK_X0 = 20, TRACK_X1 = 260, TRACK_Y = 22;
 function focalToT(f){ return Math.log(f / FOCAL_MIN) / Math.log(FOCAL_MAX / FOCAL_MIN); }
 function tToFocal(t){ return FOCAL_MIN * Math.pow(FOCAL_MAX / FOCAL_MIN, t); }
-function arcPoint(t){
-  const a = DIAL_A0 + t * (DIAL_A1 - DIAL_A0);
-  return { x: DIAL_CX + DIAL_R * Math.cos(a), y: DIAL_CY + DIAL_R * Math.sin(a) };
+function trackPoint(t){
+  return { x: TRACK_X0 + t * (TRACK_X1 - TRACK_X0), y: TRACK_Y };
 }
 function updateDialUI(){
   const t = Math.min(1, Math.max(0, focalToT(curFocal)));
-  const p = arcPoint(t);
+  const p = trackPoint(t);
   dialThumb.setAttribute('cx', p.x.toFixed(1));
   dialThumb.setAttribute('cy', p.y.toFixed(1));
-  dialProgress.setAttribute('d', 'M 20 50 A 300 300 0 0 1 ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1));
+  dialProgress.setAttribute('d', 'M 20 22 L ' + p.x.toFixed(1) + ' 22');
   focalReadout.textContent = Math.round(curFocal) + 'mm';
 }
 let dialDragging = false;
 // v3.9：previewDigital = 拖动预览（或光学失败后的备用裁切），让画面即时跟手；
 // opticalFailed = 光学变焦指令失败过，文案如实说明
 let previewDigital = false, opticalFailed = false;
-function dialEventToT(e){
+function dialPointFromEvent(e){
   const rect = focalDialSvg.getBoundingClientRect();
-  const x = (e.clientX - rect.left) / rect.width * 280;
-  const y = (e.clientY - rect.top) / rect.height * 76;
-  const a = Math.atan2(y - DIAL_CY, x - DIAL_CX);
-  let t = (a - DIAL_A0) / (DIAL_A1 - DIAL_A0);
+  return {
+    x: (e.clientX - rect.left) / rect.width * 280,
+    y: (e.clientY - rect.top) / rect.height * 44
+  };
+}
+function dialEventToT(e){
+  const p = dialPointFromEvent(e);
+  let t = (p.x - TRACK_X0) / (TRACK_X1 - TRACK_X0);
   t = Math.min(1, Math.max(0, t));
   for (const s of FOCAL_STOPS){
     if (Math.abs(t - focalToT(s)) < 0.03){ t = focalToT(s); break; }
@@ -1532,6 +1574,11 @@ function dialApply(t, force){
 }
 focalDialSvg.addEventListener('pointerdown', (e) => {
   if (!camReady){ showToast('请先打开相机'); return; }
+  // v4.7：只响应落在轨道带内的按下（轨道上下 14 单位 ≈ 拇指宽度）——点在读数、刻度空白
+  // 或拨盘边缘的触摸不启动拖动，避免点附近按钮（美颜等）时误触变焦到 250mm。
+  const p = dialPointFromEvent(e);
+  if (p.y < TRACK_Y - 14 || p.y > TRACK_Y + 14) return;
+  if (p.x < TRACK_X0 - 12 || p.x > TRACK_X1 + 12) return;
   dialDragging = true;
   try { focalDialSvg.setPointerCapture(e.pointerId); } catch (err) {}
   dialApply(dialEventToT(e), true);
@@ -1833,14 +1880,16 @@ function applyBeautyToPhoto(ctx, w, h){
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   const blurSharp = sharp > 0 ? boxBlurSeparable(d, w, h, 1) : null;
-  // v4.6：磨皮模糊半径随分辨率放大——此前固定半径 2px，在 1080p 照片上与原图几乎无差，
-  // 混再多也看不出来（用户 2026-11-19 实测“磨皮还是没用”的根因）。1080p 约 8px，720p 约 5px，上限 12px。
-  // 滑动窗口实现，半径加大几乎不增加耗时；混合上限仍为 0.55（宁弱勿过）。
-  const skinR = Math.min(12, Math.max(2, Math.round(Math.min(w, h) / 135)));
-  const blurSkin = smooth > 0 ? boxBlurSeparable(d, w, h, skinR) : null;
+  // v4.7：磨皮再加强——v4.6 的 8px 单遍模糊 + 0.55 混合上限，用户 2026-11-21 真机实测仍“感觉不出来变化”。
+  // 三处一起加力：半径 /135→/80、上限 12→20（1080p 约 14px）；再跑第二遍模糊（双重均值模糊近似高斯，
+  // 肤感更顺滑）；混合上限 0.55→0.75。默认 30 时混合约 0.41，效果一眼可见；拉满 0.75 仍保留 25% 原始质感，不塑料。
+  // 滑动窗口实现，半径加大几乎不增加耗时；第二遍只多一次照片级处理，拍照时一次性开销可接受。
+  const skinR = Math.min(20, Math.max(2, Math.round(Math.min(w, h) / 80)));
+  let blurSkin = smooth > 0 ? boxBlurSeparable(d, w, h, skinR) : null;
+  if (blurSkin) blurSkin = boxBlurSeparable(blurSkin, w, h, skinR);
   const sK = smooth / 100;      // 磨皮强度 0..1（线性，暖粉推送用）
   // v4.3：磨皮混合改开方曲线——v4.1 线性时默认 30 混合只有约 0.17，用户感觉不出来；
-  // 开方后默认 30 混合约 0.30（sqrt(0.3)×0.55），拉满仍是上限 0.55（不塑料），0 时仍为 0。
+  // v4.7 上限提到 0.75：开方后默认 30 混合约 0.41（sqrt(0.3)×0.75），拉满 0.75，0 时仍为 0。
   // 用曲线不用改默认值，是因为已存的 localStorage 值（30）也能直接受益。
   const sBlend = Math.sqrt(sK);
   const uK = sharp / 100 * 0.6; // 锐化强度 0..0.6（宁弱勿过：半径 1 的非锐化掩模，0.6 已够硬，再高易出白边）
@@ -1849,10 +1898,10 @@ function applyBeautyToPhoto(ctx, w, h){
     let r = d[i], g = d[i + 1], b = d[i + 2];
     const skinW = (smooth > 0 || sharp > 0) ? skinWeight(r, g, b) : 0;
     if (smooth > 0 && skinW > 0){
-      // 磨皮：只平滑肤色带；混合上限 0.55——保留 45% 原始质感，绝不磨成塑料皮；
+      // 磨皮：只平滑肤色带；混合上限 0.75（v4.7 由 0.55 提高）——保留 25% 原始质感，不磨成塑料皮；
       // 同时肤色往暖粉推（佳能人像方向：去蜡黄、显气色），
       // 调法与 v4.0 佳能人像风格一致（G 降、B 升 = 往品红；肤色带饱和 +12%；肤色微亮）
-      const m = skinW * sBlend * 0.55;
+      const m = skinW * sBlend * 0.75;
       r += (blurSkin[i] - r) * m;
       g += (blurSkin[i + 1] - g) * m;
       b += (blurSkin[i + 2] - b) * m;
@@ -2109,7 +2158,9 @@ function updateBufferUI(){
   // Android 按关键帧间隔出块（约 3 秒一块），块跨度会在 23–31 秒之间来回跳，看着像坏了；计时显示稳步涨到设定值后保持
   if (show){
     const elapsed = bufStartTime ? Math.floor((Date.now() - bufStartTime) / 1000) : 0;
-    bufferText.textContent = '正在缓存 ' + Math.min(elapsed, bufferSecs) + ' 秒';
+    // v4.7：显示“已缓存 N 秒 / M 秒”——之前只写“正在缓存 N 秒”，涨到设定值后停住不动，
+    // 看着像个静态设置；带上总量才看得出是实时进度（本函数每 0.5 秒跑一次，数字实时往上走）。
+    bufferText.textContent = '已缓存 ' + Math.min(elapsed, bufferSecs) + ' 秒 / ' + bufferSecs + ' 秒';
   }
 }
 
@@ -2183,7 +2234,7 @@ function finishRecording(){
   hasResult = true;
   setVideoThumb(resultVideo);
   resetHealState(); // v4.3：视频没有照片画布，去瑕疵入口不显示
-  saveClip({ kind: 'video', blob: blob, name: fname, seconds: totalSec, mode: MODE_NAME[curMode], style: procDegraded ? '原画' : stName });
+  resultClipId = saveClip({ kind: 'video', blob: blob, name: fname, seconds: totalSec, mode: MODE_NAME[curMode], style: procDegraded ? '原画' : stName }); // v4.7：记下 id，回顾面板删除用
   recTimerChip.textContent = '00:00';
   restartBuffering();
 }
@@ -2240,7 +2291,7 @@ function takePhoto(){
     healCanvas = c; healCtx = ctx;
     healBase = ctx.getImageData(0, 0, c.width, c.height);
     healUrl = url; healName = fname;
-    healClipId = saveClip({ kind: 'photo', blob: blob, name: fname, seconds: 0, mode: MODE_NAME[curMode], style: stName });
+    healClipId = resultClipId = saveClip({ kind: 'photo', blob: blob, name: fname, seconds: 0, mode: MODE_NAME[curMode], style: stName });
     btnHeal.classList.remove('hidden');
   }, 'image/jpeg', 0.92);
 }
@@ -2447,6 +2498,22 @@ if (SpeechRec){
 
 function startVoice(){
   if (!SpeechRec || voiceOn) return;
+  // v4.7：先查麦克风权限——权限被拒绝时识别根本跑不起来，而 webkitSpeechRecognition 的
+  // onerror 未必触发，用户只会看到“语音开着但说话没反应”。查到 denied 就直接明说，不假装在听。
+  if (navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({ name: 'microphone' }).then(function (st){
+      if (st.state === 'denied'){
+        showToast('麦克风权限被拒绝，语音控制用不了：请在浏览器设置里允许本站使用麦克风', 5000);
+        return;
+      }
+      startVoiceNow();
+    }).catch(function(){ startVoiceNow(); });
+    return;
+  }
+  startVoiceNow();
+}
+function startVoiceNow(){
+  if (!SpeechRec || voiceOn) return;
   try {
     voiceRec = new SpeechRec();
   } catch (e) {
@@ -2473,7 +2540,7 @@ function startVoice(){
     if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed' || ev.error === 'audio-capture'){
       voiceBlocked = true;
       stopVoice();
-      showToast('无法使用麦克风进行语音识别，语音控制已关闭');
+      showToast('麦克风权限被拒绝，语音控制已关闭：请在浏览器设置里允许本站使用麦克风', 5000);
     }
     // network / no-speech 等临时错误：由 onend 重启
   };
@@ -2509,19 +2576,25 @@ function stopVoice(){
 function handleVoiceCommand(text){
   const now = Date.now();
   if (now - lastVoiceCmd < 2000) return; // 同一句话的重复识别结果只执行一次
-  if (text.indexOf('开始录像') >= 0){
-    if (isRecording || !camReady) return;
+  // v4.7：命令加语音识别的常见变体——“录像”常被识别成“录象”，“录制”也是常说的词；
+  // 守卫条件不满足时给提示，不再静默无反应。
+  const has = (...ws) => ws.some(w => text.indexOf(w) >= 0);
+  if (has('开始录像', '开始录象', '开始录制')){
+    if (!camReady){ showToast('请先打开相机'); return; }
+    if (isRecording) return;
     if (curMode === 'photo') setMode('prerecord');
     lastVoiceCmd = now;
-    showToast('收到：开始录像');
+    // 预录模式下开始录像即带预录片段（toggleRecord 会把滚动缓存拼进去），提示里写明
+    showToast(curMode === 'prerecord' ? '收到：开始录像（含预录 ' + bufferSecs + ' 秒）' : '收到：开始录像');
     toggleRecord();
-  } else if (text.indexOf('停止录像') >= 0 || text.indexOf('结束录像') >= 0){
+  } else if (has('停止录像', '结束录像', '停止录制', '结束录制', '停止录象', '结束录象')){
     if (!isRecording) return;
     lastVoiceCmd = now;
     showToast('收到：停止录像');
     stopRecording();
-  } else if (text.indexOf('拍照') >= 0){
-    if (!camReady || isRecording) return;
+  } else if (has('拍照', '拍一张', '拍照片')){
+    if (!camReady){ showToast('请先打开相机'); return; }
+    if (isRecording){ showToast('录制中不能拍照'); return; }
     lastVoiceCmd = now;
     showToast('收到：拍照');
     takePhoto();
@@ -2554,6 +2627,27 @@ document.addEventListener('keydown', (e) => {
   }
 });
 btnAgain.addEventListener('click', () => { camResult.classList.add('hidden'); resetHealState(); }); // v4.3：面板关了，去瑕疵状态一起复位
+btnDelete.addEventListener('click', () => {
+  // v4.7：拍完当场删除——坏片不用先存再去作品库删。删的是作品库里的同一条记录，
+  // 不是只关面板；确认后删除，删完缩略图复位、hasResult 清掉，点缩略图不会再打开已删的照片。
+  if (!resultClipId){ camResult.classList.add('hidden'); return; }
+  const isVideo = !resultVideo.classList.contains('hidden');
+  if (!confirm('删除这' + (isVideo ? '段视频' : '张照片') + '？删除后无法恢复。')) return;
+  const id = resultClipId;
+  deleteClip(id).then(ok => {
+    if (!ok) return;
+    resultClipId = null;
+    hasResult = false;
+    try { if (btnDownload.href) URL.revokeObjectURL(btnDownload.href); } catch (e) {}
+    btnDownload.removeAttribute('href');
+    resultVideo.removeAttribute('src'); resultVideo.load();
+    resultImg.removeAttribute('src');
+    lastThumb.innerHTML = '<span>暂无</span>';
+    camResult.classList.add('hidden');
+    resetHealState();
+    showToast('已删除');
+  });
+});
 lastThumb.addEventListener('click', () => { if (hasResult) camResult.classList.remove('hidden'); });
 btnVoice.addEventListener('click', () => { voiceOn ? stopVoice() : startVoice(); });
 btnStab.addEventListener('click', () => { setStab(!stabOn); });
@@ -2964,7 +3058,10 @@ const STYLES = [
     } },
   { id: 'canon', name: '佳能人像', en: 'Canon', body: '#1c1c1c', top: '#1c1c1c', accent: '#c8102e',
     // v4.0（重点）：肤色往暖粉推（橙红带朝品红移、红黄饱和+12%）、对比放软、高光柔和过渡、黑场微抬、肤色提亮
-    live: 'saturate(1.06) contrast(0.95) sepia(0.08) brightness(1.03) hue-rotate(-3deg)',
+    // v4.7：实时近似去掉 sepia 与 hue-rotate——它俩是全帧暖化，白墙、灰衣、天空全偏红，
+    // 预览比逐像素照片红得多（用户 2026-11-21 真机反馈“预览发红”）；肤色往粉推只在逐像素路径做，
+    // 实时路径只保留柔对比 + 微饱和 + 微亮，仍是佳能人像的柔亮感，但不再偏色。
+    live: 'saturate(1.06) contrast(0.95) brightness(1.03)',
     fn: (r, g, b) => {
       let p = applySat(r, g, b, 1.04); // 人像档比标准档饱和略低
       p = applyContrast(p[0], p[1], p[2], 0.94);
@@ -3134,6 +3231,7 @@ function setCamStyle(id){
   camStyle = id;
   resetPrevFrame(); // v4.2：换风格后画面观感变了，上一帧不能再混进来
   document.querySelectorAll('#styleStrip .style-card').forEach(el => el.classList.toggle('on', el.dataset.style === id));
+  updateStyleToggle(); // v4.7：开关 chip 同步显示当前风格
 }
 styleStrip.addEventListener('click', (e) => {
   const c = e.target.closest('.style-card'); if (!c) return;
@@ -3141,6 +3239,25 @@ styleStrip.addEventListener('click', (e) => {
   const st = STYLES.find(s => s.id === camStyle);
   showToast(st.id === 'orig' ? '已切换为原图' : '已切换到' + st.name + '风格');
 });
+
+/* ---- v4.7：风格条可收起（默认收起，取景界面干净；点开关展开/收起） ----
+   开关 chip 显示当前风格，展开时移到风格条上方；展开时取景器加 .styles-open，
+   变焦拨盘与说明行自动上移让位（见 CSS），收起时落回原位。 */
+const styleToggle = document.getElementById('styleToggle');
+const styleToggleName = document.getElementById('styleToggleName');
+const styleToggleChev = document.getElementById('styleToggleChev');
+function updateStyleToggle(){
+  const st = STYLES.find(s => s.id === camStyle) || STYLES[0];
+  styleToggleName.textContent = st.name;
+  const open = !styleStrip.classList.contains('collapsed');
+  styleToggleChev.textContent = open ? '⌄' : '⌃';
+  camScreen.classList.toggle('styles-open', open);
+}
+styleToggle.addEventListener('click', () => {
+  styleStrip.classList.toggle('collapsed');
+  updateStyleToggle();
+});
+updateStyleToggle();
 
 btnStyleDownload.addEventListener('click', () => {
   const st = STYLES.find(s => s.id === curStyle) || STYLES[0];
@@ -3360,12 +3477,17 @@ function getAllClips(){
     req.onerror = () => reject(req.error || new Error('读取失败'));
   }));
 }
+/* v4.7：删除返回 Promise（true/false），供拍摄后当场删除确认成功后再清理界面；
+   作品库删除加确认（见下方点击处理），误删可避免。删不存在的 id 也算成功（幂等）。 */
 function deleteClip(id){
-  libTx('readwrite').then(store => {
+  return libTx('readwrite').then(store => new Promise((resolve) => {
     const req = store.delete(id);
-    req.onsuccess = () => renderLibrary();
-    req.onerror = () => showToast('删除失败，请重试');
-  }).catch(() => showToast('删除失败，请重试'));
+    req.onsuccess = () => { renderLibrary(); resolve(true); };
+    req.onerror = () => resolve(false);
+  })).then(ok => {
+    if (!ok) showToast('删除失败，请重试');
+    return ok;
+  }).catch(() => { showToast('删除失败，请重试'); return false; });
 }
 function downloadClip(id){
   libTx('readonly').then(store => {
@@ -3418,7 +3540,12 @@ libList.addEventListener('click', (e) => {
   const dl = e.target.closest('[data-dl]');
   const del = e.target.closest('[data-del]');
   if (dl) downloadClip(dl.dataset.dl);
-  else if (del) deleteClip(del.dataset.del);
+  else if (del){
+    // v4.7：删除前确认（带作品名），避免手滑误删；确认后删除并刷新列表
+    const item = del.closest('.lib-item');
+    const nm = item ? item.querySelector('.lm-name').textContent : '';
+    if (confirm('删除「' + nm + '」？删除后无法恢复。')) deleteClip(del.dataset.del);
+  }
 });
 
 /* ================= 测距辅助 ================= */
